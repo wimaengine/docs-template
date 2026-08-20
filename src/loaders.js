@@ -1,0 +1,105 @@
+import { defineCollection, z } from "astro:content";
+import { glob } from "astro/loaders";
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
+import { projectRootDir } from "./config/project.js";
+import { getExamplesContentDir, getGuideContentDir, getIntroContentPath } from "./config/site.js";
+
+const examplesRoot = getExamplesContentDir();
+const guideRoot = getGuideContentDir();
+const introRoot = getIntroContentPath();
+
+function toDisplayPath(filePath) {
+  const relativePath = path.relative(projectRootDir, filePath).split(path.sep).join("/");
+  return relativePath.startsWith("..") ? relativePath : `/${relativePath}`;
+}
+
+function toTitle(value) {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+async function collectExampleFiles(dir, root) {
+  const dirEntries = await readdir(dir, { withFileTypes: true });
+  const files = [];
+
+  for (const dirEntry of dirEntries) {
+    const fullPath = path.join(dir, dirEntry.name);
+    const relativePath = path.relative(root, fullPath).split(path.sep).join("/");
+
+    if (dirEntry.isDirectory()) {
+      if (relativePath === "addons" || relativePath.startsWith("addons/")) {
+        continue;
+      }
+      files.push(...(await collectExampleFiles(fullPath, root)));
+      continue;
+    }
+
+    if (dirEntry.isFile() && dirEntry.name.endsWith(".js")) {
+      files.push(path.relative(root, fullPath));
+    }
+  }
+
+  return files;
+}
+
+const examples = defineCollection({
+  loader: async () => {
+    const relativePaths = await collectExampleFiles(examplesRoot, examplesRoot);
+
+    return Promise.all(
+      relativePaths.map(async (relativePath) => {
+        const normalizedPath = relativePath.split(path.sep).join("/");
+        const id = normalizedPath.replace(/\.js$/, "");
+        const segments = id.split("/");
+        const category = segments[0] || "uncategorized";
+        const fileName = segments.at(-1) || "example";
+
+        return {
+          id,
+          title: toTitle(fileName),
+          description: `${toTitle(category)} example`,
+          category,
+          filePath: toDisplayPath(path.join(examplesRoot, relativePath)),
+          source: await readFile(path.join(examplesRoot, relativePath), "utf-8")
+        };
+      })
+    );
+  },
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    category: z.string(),
+    filePath: z.string(),
+    source: z.string()
+  })
+});
+
+const guide = defineCollection({
+  loader: glob({
+    pattern: "**/*.md",
+    base: guideRoot,
+    deferRender: true
+  }),
+  schema: z.object({
+    title: z.string()
+  })
+});
+
+const intro = defineCollection({
+  loader: glob({
+    pattern: path.basename(introRoot),
+    base: path.dirname(introRoot),
+    deferRender: true
+  }),
+  schema: z.object({
+    title: z.string().optional()
+  })
+});
+
+export const collections = {
+  intro,
+  examples,
+  guide
+};

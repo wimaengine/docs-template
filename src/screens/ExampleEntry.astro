@@ -1,0 +1,97 @@
+---
+import { Code } from "astro:components";
+import { rootPackageName } from "@configs/project.js";
+import { sidebarTabs } from "@configs";
+import DocLayout from "@layouts/DocLayout.astro";
+import { withBase } from "../utils/url.js";
+import { getExamplesRoutePath } from "../config/site.js";
+
+interface ExampleCollectionEntry {
+  data: {
+    title: string;
+    filePath: string;
+    source: string;
+  };
+}
+
+interface Props {
+  entry: ExampleCollectionEntry;
+  sampleUrl: string;
+}
+
+const { entry, sampleUrl } = Astro.props as Props;
+const title = entry.data.title;
+---
+
+<DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs}>
+  <div class="example-frame">
+    <a href={withBase(getExamplesRoutePath())}>← Back to examples</a>
+    <h1 style="text-align:center">{title}</h1>
+    <a class="example-link" href={sampleUrl} target="_blank" rel="noreferrer">
+      Open as a stand-alone example
+    </a>
+    <iframe
+      class="example-preview"
+      title={`${title} preview`}
+      src={sampleUrl}
+      loading="lazy"
+    />
+  </div>
+  <p>Source file: {entry.data.filePath}</p>
+  <div class="source-code">
+    <Code code={entry.data.source} lang="js" />
+  </div>
+</DocLayout>
+
+<style>
+  .example-frame {
+    position: relative;
+    width: 100%;
+    margin-bottom: 1.25rem;
+  }
+
+  .example-link {
+    position: absolute;
+    top: 7rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    color: var(--accent);
+    text-decoration: underline;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 0.2rem 0.5rem;
+    border-radius: 0;
+  }
+
+  .example-link:hover {
+    color: var(--accent-secondary);
+  }
+
+  .source-code {
+    outline: 1px solid var(--border);
+    outline-offset: 0;
+    border-radius: 0;
+    overflow: hidden;
+  }
+
+  .example-preview {
+    display: block;
+    width: 100%;
+    height: 560px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    margin: 0 0 1.25rem;
+  }
+
+  .source-code :global(.astro-code) {
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .source-code :global(pre) {
+    margin: 0 !important;
+    padding: 10px;
+  }
+</style>

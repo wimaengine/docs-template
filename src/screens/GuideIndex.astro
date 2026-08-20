@@ -1,0 +1,23 @@
+---
+import { render } from "astro:content";
+import { rootPackageName } from "@configs/project.js";
+import { sidebarTabs } from "@configs";
+import DocLayout from "@layouts/DocLayout.astro";
+
+interface GuideCollectionEntry {
+  data: {
+    title: string;
+  };
+}
+
+interface Props {
+  entry: GuideCollectionEntry;
+}
+
+const { entry } = Astro.props as Props;
+const { Content } = await render(entry);
+---
+
+<DocLayout title={`${entry.data.title} | ${rootPackageName}`} tabs={sidebarTabs}>
+  <Content />
+</DocLayout>

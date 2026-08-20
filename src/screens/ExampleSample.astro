@@ -1,0 +1,30 @@
+---
+import Example from "@layouts/Example.astro";
+import { withBase } from "../utils/url.js";
+
+interface ExampleCollectionEntry {
+  id: string;
+  data: {
+    title: string;
+    source: string;
+  };
+}
+
+interface Props {
+  entry: ExampleCollectionEntry;
+}
+
+const { entry } = Astro.props as Props;
+const source = transformUrls(entry.data.source);
+
+function transformUrls(value: string) {
+  return value.replace(
+    /(["'`])(\/(?!\/)[^"'`]*)\1/g,
+    (_: string, quote: string, path: string) => {
+      return `${quote}${withBase(path)}${quote}`;
+    },
+  );
+}
+---
+
+<Example title={entry.data.title} source={source} />

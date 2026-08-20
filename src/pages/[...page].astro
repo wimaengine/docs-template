@@ -1,0 +1,109 @@
+---
+import { getCollection } from "astro:content";
+import { getExamplesRoutePath, getGuideRoutePath, routeToParam } from "@configs/site.js";
+import { withBase } from "../utils/url.js";
+import GuideIndex from "../screens/GuideIndex.astro";
+import GuideEntry from "../screens/GuideEntry.astro";
+import ExamplesIndex from "../screens/ExamplesIndex.astro";
+import ExampleEntry from "../screens/ExampleEntry.astro";
+
+interface GuideCollectionEntry {
+  id: string;
+  slug?: string;
+  body: string;
+  data: {
+    title: string;
+  };
+}
+
+interface ExampleCollectionEntry {
+  id: string;
+  data: {
+    title: string;
+    description: string;
+    category: string;
+    filePath: string;
+    source: string;
+  };
+}
+
+type PageKind =
+  | "guide-index"
+  | "guide-entry"
+  | "examples-index"
+  | "example-entry";
+
+interface StaticProps {
+  kind: PageKind;
+  entry?: GuideCollectionEntry | ExampleCollectionEntry;
+}
+
+function splitCamelCase(value: string): string {
+  return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+}
+
+export async function getStaticPaths() {
+  const cleanGuideSlug = (value: string) => value.replace(/\.md$/, "");
+  const [guideEntriesForPaths, exampleEntriesForPaths] = await Promise.all([
+    getCollection("guide"),
+    getCollection("examples")
+  ]) as [GuideCollectionEntry[], ExampleCollectionEntry[]];
+  const guideRootForPaths = getGuideRoutePath();
+  const examplesRootForPaths = getExamplesRoutePath();
+
+  return [
+    ...guideEntriesForPaths.map((entry) => {
+      const cleaned = cleanGuideSlug(entry.slug ?? entry.id);
+      return cleaned === "index"
+        ? {
+            params: { page: routeToParam(guideRootForPaths) },
+            props: { kind: "guide-index", entry }
+          }
+        : {
+            params: { page: routeToParam(getGuideRoutePath(cleaned)) },
+            props: { kind: "guide-entry", entry }
+          };
+    }),
+    {
+      params: { page: routeToParam(examplesRootForPaths) },
+      props: { kind: "examples-index" }
+    },
+    ...exampleEntriesForPaths.map((entry) => ({
+      params: { page: routeToParam(getExamplesRoutePath(entry.id)) },
+      props: { kind: "example-entry", entry }
+    }))
+  ];
+}
+
+const props = Astro.props as StaticProps;
+const { kind } = props;
+const guideEntry = kind === "guide-index" || kind === "guide-entry" ? (props.entry as GuideCollectionEntry) : null;
+const exampleEntry = kind === "example-entry" ? (props.entry as ExampleCollectionEntry) : null;
+
+const examples = (await getCollection("examples")) as ExampleCollectionEntry[];
+const categories = Object.entries(
+  examples
+    .map((entry) => ({
+      slug: entry.id,
+      title: splitCamelCase(entry.data.title),
+      directory: entry.id.split("/").slice(0, -1).join("/"),
+      description: entry.data.description
+    }))
+    .sort((a, b) => {
+      const dirCompare = a.directory.localeCompare(b.directory);
+      if (dirCompare !== 0) return dirCompare;
+      return a.title.localeCompare(b.title);
+    }, {})
+    .reduce<Record<string, Array<{ slug: string; title: string; directory: string; description: string }>>>((acc, example) => {
+      const key = example.directory || "uncategorized";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(example);
+      return acc;
+    }, {})
+);
+---
+
+{guideEntry && kind === "guide-index" ? <GuideIndex entry={guideEntry} /> : null}
+{guideEntry && kind === "guide-entry" ? <GuideEntry entry={guideEntry} /> : null}
+{kind === "examples-index" ? <ExamplesIndex categories={categories} /> : null}
+{exampleEntry && kind === "example-entry" ? <ExampleEntry entry={exampleEntry} sampleUrl={withBase(getExamplesRoutePath(exampleEntry.id, "example.html"))} /> : null}

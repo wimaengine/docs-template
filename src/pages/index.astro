@@ -1,0 +1,27 @@
+---
+import { getCollection, render } from "astro:content";
+import { rootPackageName } from "@configs/project.js";
+import { sidebarTabs } from "@configs";
+import DocLayout from "@layouts/DocLayout.astro";
+
+interface IntroCollectionEntry {
+  id: string;
+  body: string;
+  data: {
+    title?: string;
+  };
+}
+
+const introEntries = (await getCollection("intro")) as IntroCollectionEntry[];
+const introEntry = introEntries[0];
+
+if (!introEntry) {
+  throw new Error("Missing introduction entry");
+}
+
+const { Content } = await render(introEntry);
+---
+
+<DocLayout title={rootPackageName} tabs={sidebarTabs}>
+  <Content />
+</DocLayout>

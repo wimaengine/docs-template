@@ -1,0 +1,94 @@
+---
+import { rootPackageName } from "@configs/project.js";
+import { sidebarTabs } from "@configs";
+import DocLayout from "@layouts/DocLayout.astro";
+import { withBase } from "../utils/url.js";
+import { getExamplesRoutePath } from "../config/site.js";
+
+interface CategoryExample {
+  slug: string;
+  title: string;
+  directory: string;
+  description: string;
+}
+
+interface Props {
+  categories: Array<[string, CategoryExample[]]>;
+}
+
+const { categories } = Astro.props as Props;
+
+function splitCamelCase(value: string): string {
+  return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+}
+
+function formatCategory(value: string): string {
+  return splitCamelCase(value).replaceAll("/", " / ");
+}
+---
+
+<DocLayout title={`Examples | ${rootPackageName}`} tabs={sidebarTabs}>
+  <h1>Examples</h1>
+  <p>Browse runnable examples from the repository.</p>
+
+  {categories.map(([category, categoryExamples]) => (
+    <section class="category-section">
+      <h2>{formatCategory(category)}</h2>
+      <div class="examples-grid">
+        {categoryExamples.map((example) => (
+          <a class="example-card" href={withBase(getExamplesRoutePath(example.slug))}>
+            <img src={withBase("/images/uv.jpg")} alt="" loading="lazy" />
+            <span>{example.title}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+</DocLayout>
+
+<style>
+  .category-section + .category-section {
+    margin-top: 2rem;
+  }
+
+  .category-section h2 {
+    margin-bottom: 0.75rem;
+  }
+
+  .examples-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .example-card {
+    position: relative;
+    display: block;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface-2);
+    text-decoration: none;
+  }
+
+  .example-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .example-card span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0.55rem 0.75rem;
+    text-align: center;
+    color: #ffffff;
+    font-weight: 700;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.15));
+  }
+</style>
