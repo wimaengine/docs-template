@@ -1,6 +1,6 @@
 {
   "name": "wima-docs-website-template",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Astro integration package for the wima docs website template.",
   "type": "module",
   "main": "./src/index.js",
