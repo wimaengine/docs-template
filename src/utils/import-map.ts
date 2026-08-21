@@ -97,7 +97,9 @@ function resolveLegacyEntry(manifest: PackageManifest): string | undefined {
 }
 
 function resolveCurrentPackageEntry(): string | undefined {
-  return resolveExportsEntry(rootPackageJson) ?? resolveLegacyEntry(rootPackageJson);
+  return normalizeResolvedEntry(rootPackageJson.jsdelivr)
+    ?? resolveExportsEntry(rootPackageJson)
+    ?? resolveLegacyEntry(rootPackageJson);
 }
 
 function findFirstEsmFile(directory: string): string | undefined {
@@ -232,7 +234,7 @@ function buildCurrentPackageUrl(isProd: boolean, entry: string | undefined): str
     throw new Error(`Unable to resolve the ${rootPackageName} package entry from package.json`);
   }
 
-  return withBase(`/${entry}`);
+  return buildPackageUrl(rootPackageName, rootPackageJson.version ?? "latest", entry, true);
 }
 
 export function buildImportMap(

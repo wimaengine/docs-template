@@ -1,5 +1,6 @@
 export interface RootPackageJson {
   name: string;
+  version?: string;
   source?: string;
   main?: string;
   module?: string;

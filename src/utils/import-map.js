@@ -83,7 +83,9 @@ function resolveLegacyEntry(manifest) {
 }
 
 function resolveCurrentPackageEntry() {
-  return resolveExportsEntry(rootPackageJson) ?? resolveLegacyEntry(rootPackageJson);
+  return normalizeResolvedEntry(rootPackageJson.jsdelivr)
+    ?? resolveExportsEntry(rootPackageJson)
+    ?? resolveLegacyEntry(rootPackageJson);
 }
 
 function findFirstEsmFile(directory) {
@@ -218,7 +220,7 @@ function buildCurrentPackageUrl(isProd, entry) {
     throw new Error(`Unable to resolve the ${rootPackageName} package entry from package.json`);
   }
 
-  return withBase(`/${entry}`);
+  return buildPackageUrl(rootPackageName, rootPackageJson.version ?? "latest", entry, true);
 }
 
 export function buildImportMap(isProd) {
