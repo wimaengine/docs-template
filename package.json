@@ -33,5 +33,13 @@
     "astro": "^7.2.2"
   },
   "license": "MIT",
-  "author": "Wayne Mwashuma"
+  "author": "Wayne Mwashuma",
+  "homepage": "https://github.com/wimaengine/docs-template#readme",
+  "bugs": {
+    "url": "https://github.com/wimaengine/docs-template/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wimaengine/docs-template.git"
+  }
 }
