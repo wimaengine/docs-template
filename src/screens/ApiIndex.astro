@@ -1,0 +1,21 @@
+---
+import { rootPackageName } from "@configs/project.js";
+import { sidebarTabs } from "@configs";
+import DocLayout from "@layouts/DocLayout.astro";
+import ApiSurface from "../components/ApiSurface.astro";
+
+interface ApiModuleSummary {
+  slug: string;
+  name: string;
+}
+
+interface Props {
+  groups: Array<[string, ApiModuleSummary[]]>;
+}
+
+const { groups } = Astro.props as Props;
+---
+
+<DocLayout title={`API | ${rootPackageName}`} tabs={sidebarTabs}>
+  <ApiSurface groups={groups} blank />
+</DocLayout>

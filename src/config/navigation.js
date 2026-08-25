@@ -1,6 +1,6 @@
 import { getCollection, render } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
+import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
 
 function cleanLabel(value) {
   return value.replace(/^\s*\d+[.)-]?\s+/, "").trim();
@@ -122,6 +122,7 @@ function getGuideRoute(entry) {
 }
 
 const guideRootPath = getGuideRoutePath();
+const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
 const introEntries = await getCollection("intro");
 const introEntry = introEntries[0];
@@ -192,6 +193,10 @@ const sidebarTabs = [
         })
       )
     ]
+  },
+  {
+    label: "API",
+    href: withBase(apiRootPath)
   },
   {
     label: "Examples",

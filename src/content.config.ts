@@ -1,1 +1,1 @@
-export { collections } from "./loaders.ts";
+export { collections } from "./loaders.js";

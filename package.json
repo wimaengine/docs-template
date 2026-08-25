@@ -30,6 +30,8 @@
     "resolve.exports": "^2.0.3"
   },
   "devDependencies": {
+    "@microsoft/api-extractor": "^7.58.13",
+    "@microsoft/api-extractor-model": "^7.33.11",
     "astro": "^7.2.2"
   },
   "license": "MIT",

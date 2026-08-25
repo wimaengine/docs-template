@@ -1,11 +1,15 @@
 ---
 import { getCollection } from "astro:content";
-import { getExamplesRoutePath, getGuideRoutePath, routeToParam } from "@configs/site.js";
+import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, routeToParam } from "@configs/site.js";
 import { withBase } from "../utils/url.js";
 import GuideIndex from "../screens/GuideIndex.astro";
 import GuideEntry from "../screens/GuideEntry.astro";
 import ExamplesIndex from "../screens/ExamplesIndex.astro";
 import ExampleEntry from "../screens/ExampleEntry.astro";
+import ApiIndex from "../screens/ApiIndex.astro";
+import ApiClassEntry from "../screens/ApiClassEntry.astro";
+import ApiEnumEntry from "../screens/ApiEnumEntry.astro";
+import ApiEntry from "../screens/ApiEntry.astro";
 
 interface GuideCollectionEntry {
   id: string;
@@ -27,29 +31,77 @@ interface ExampleCollectionEntry {
   };
 }
 
+interface ApiSection {
+  order: number;
+  parent?: string;
+  kind: string;
+  name: string;
+  signature: string;
+  description: string;
+  tags: string[];
+}
+
+interface ApiCollectionEntry {
+  id: string;
+  data: {
+    title: string;
+    name: string;
+    kind: string;
+    description: string;
+    filePath: string;
+    source: string;
+    sections: ApiSection[];
+  };
+}
+
 type PageKind =
   | "guide-index"
   | "guide-entry"
   | "examples-index"
-  | "example-entry";
+  | "example-entry"
+  | "api-index"
+  | "api-class-entry"
+  | "api-enum-entry"
+  | "api-entry";
 
 interface StaticProps {
   kind: PageKind;
-  entry?: GuideCollectionEntry | ExampleCollectionEntry;
+  entry?: GuideCollectionEntry | ExampleCollectionEntry | ApiCollectionEntry;
 }
 
 function splitCamelCase(value: string): string {
   return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
 }
 
+function getApiKindOrder(kind: string): number {
+  switch (kind) {
+    case "class":
+      return 0;
+    case "enum":
+      return 1;
+    case "constant":
+      return 2;
+    case "variable":
+      return 3;
+    case "function":
+      return 4;
+    case "typedef":
+      return 5;
+    default:
+      return 6;
+  }
+}
+
 export async function getStaticPaths() {
   const cleanGuideSlug = (value: string) => value.replace(/\.md$/, "");
-  const [guideEntriesForPaths, exampleEntriesForPaths] = await Promise.all([
+  const [guideEntriesForPaths, exampleEntriesForPaths, apiEntriesForPaths] = await Promise.all([
     getCollection("guide"),
-    getCollection("examples")
-  ]) as [GuideCollectionEntry[], ExampleCollectionEntry[]];
+    getCollection("examples"),
+    getCollection("api")
+  ]) as [GuideCollectionEntry[], ExampleCollectionEntry[], ApiCollectionEntry[]];
   const guideRootForPaths = getGuideRoutePath();
   const examplesRootForPaths = getExamplesRoutePath();
+  const apiRootForPaths = getApiRoutePath();
 
   return [
     ...guideEntriesForPaths.map((entry) => {
@@ -71,6 +123,21 @@ export async function getStaticPaths() {
     ...exampleEntriesForPaths.map((entry) => ({
       params: { page: routeToParam(getExamplesRoutePath(entry.id)) },
       props: { kind: "example-entry", entry }
+    })),
+    {
+      params: { page: routeToParam(apiRootForPaths) },
+      props: { kind: "api-index" }
+    },
+    ...apiEntriesForPaths.map((entry) => ({
+      params: { page: routeToParam(getApiRoutePath(entry.id)) },
+      props: {
+        kind: entry.data.kind === "class"
+          ? "api-class-entry"
+          : entry.data.kind === "enum"
+            ? "api-enum-entry"
+          : "api-entry",
+        entry
+      }
     }))
   ];
 }
@@ -79,6 +146,9 @@ const props = Astro.props as StaticProps;
 const { kind } = props;
 const guideEntry = kind === "guide-index" || kind === "guide-entry" ? (props.entry as GuideCollectionEntry) : null;
 const exampleEntry = kind === "example-entry" ? (props.entry as ExampleCollectionEntry) : null;
+const apiEntry = kind === "api-entry" ? (props.entry as ApiCollectionEntry) : null;
+const apiClassEntry = kind === "api-class-entry" ? (props.entry as ApiCollectionEntry) : null;
+const apiEnumEntry = kind === "api-enum-entry" ? (props.entry as ApiCollectionEntry) : null;
 
 const examples = (await getCollection("examples")) as ExampleCollectionEntry[];
 const categories = Object.entries(
@@ -93,11 +163,32 @@ const categories = Object.entries(
       const dirCompare = a.directory.localeCompare(b.directory);
       if (dirCompare !== 0) return dirCompare;
       return a.title.localeCompare(b.title);
-    }, {})
+    })
     .reduce<Record<string, Array<{ slug: string; title: string; directory: string; description: string }>>>((acc, example) => {
       const key = example.directory || "uncategorized";
       if (!acc[key]) acc[key] = [];
       acc[key].push(example);
+      return acc;
+    }, {})
+);
+
+const apiEntries = (await getCollection("api")) as ApiCollectionEntry[];
+const apiGroups = Object.entries(
+  apiEntries
+    .map((entry) => ({
+      slug: entry.id,
+      name: entry.data.name,
+      kind: entry.data.kind
+    }))
+    .sort((a, b) => {
+      const kindCompare = getApiKindOrder(a.kind) - getApiKindOrder(b.kind);
+      if (kindCompare !== 0) return kindCompare;
+      return a.name.localeCompare(b.name);
+    })
+    .reduce<Record<string, Array<{ slug: string; name: string }>>>((acc, apiModule) => {
+      const key = apiModule.kind;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({ slug: apiModule.slug, name: apiModule.name });
       return acc;
     }, {})
 );
@@ -107,3 +198,7 @@ const categories = Object.entries(
 {guideEntry && kind === "guide-entry" ? <GuideEntry entry={guideEntry} /> : null}
 {kind === "examples-index" ? <ExamplesIndex categories={categories} /> : null}
 {exampleEntry && kind === "example-entry" ? <ExampleEntry entry={exampleEntry} sampleUrl={withBase(getExamplesRoutePath(exampleEntry.id, "example.html"))} /> : null}
+{kind === "api-index" ? <ApiIndex groups={apiGroups} /> : null}
+{apiClassEntry && kind === "api-class-entry" ? <ApiClassEntry entry={apiClassEntry} groups={apiGroups} /> : null}
+{apiEnumEntry && kind === "api-enum-entry" ? <ApiEnumEntry entry={apiEnumEntry} groups={apiGroups} /> : null}
+{apiEntry && kind === "api-entry" ? <ApiEntry entry={apiEntry} groups={apiGroups} /> : null}

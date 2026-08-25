@@ -4,8 +4,10 @@ import { projectRootDir } from "./project.js";
 const defaultWebsiteConfig = Object.freeze({
   guideRoute: "/guide",
   examplesRoute: "/examples",
+  apiRoute: "/api",
   guideContentDir: "content/guide",
   examplesContentDir: "examples",
+  apiSourceDir: "src",
   introContentPath: "README.md"
 });
 
@@ -27,17 +29,19 @@ function resolveWebsiteConfig(options = {}) {
   const config = {
     guideRoute: normalizeRoutePath(options.guideRoute, defaultWebsiteConfig.guideRoute),
     examplesRoute: normalizeRoutePath(options.examplesRoute, defaultWebsiteConfig.examplesRoute),
+    apiRoute: normalizeRoutePath(options.apiRoute, defaultWebsiteConfig.apiRoute),
     guideContentDir: normalizeContentPath(options.guideContentDir, defaultWebsiteConfig.guideContentDir),
     examplesContentDir: normalizeContentPath(options.examplesContentDir, defaultWebsiteConfig.examplesContentDir),
+    apiSourceDir: normalizeContentPath(options.apiSourceDir, defaultWebsiteConfig.apiSourceDir),
     introContentPath: normalizeContentPath(options.introContentPath, defaultWebsiteConfig.introContentPath)
   };
 
-  if (config.guideRoute === "/" || config.examplesRoute === "/") {
-    throw new Error("guideRoute and examplesRoute must not point at the site root");
+  if (config.guideRoute === "/" || config.examplesRoute === "/" || config.apiRoute === "/") {
+    throw new Error("guideRoute, examplesRoute, and apiRoute must not point at the site root");
   }
 
-  if (config.guideRoute === config.examplesRoute) {
-    throw new Error("guideRoute and examplesRoute must be different");
+  if (config.guideRoute === config.examplesRoute || config.guideRoute === config.apiRoute || config.examplesRoute === config.apiRoute) {
+    throw new Error("guideRoute, examplesRoute, and apiRoute must be different");
   }
 
   return Object.freeze(config);
@@ -80,6 +84,10 @@ function rewriteRoutePrefix(pathname) {
     return getExamplesRoutePath(pathname.slice("/examples".length));
   }
 
+  if (pathname === "/api" || pathname.startsWith("/api/")) {
+    return getApiRoutePath(pathname.slice("/api".length));
+  }
+
   return pathname;
 }
 
@@ -107,6 +115,10 @@ function getExamplesRoutePath(...segments) {
   return joinRoutePath(websiteConfig.examplesRoute, ...segments);
 }
 
+function getApiRoutePath(...segments) {
+  return joinRoutePath(websiteConfig.apiRoute, ...segments);
+}
+
 function getGuideContentDir() {
   return websiteConfig.guideContentDir;
 }
@@ -115,12 +127,18 @@ function getExamplesContentDir() {
   return websiteConfig.examplesContentDir;
 }
 
+function getApiSourceDir() {
+  return websiteConfig.apiSourceDir;
+}
+
 function getIntroContentPath() {
   return websiteConfig.introContentPath;
 }
 
 export {
   defaultWebsiteConfig,
+  getApiRoutePath,
+  getApiSourceDir,
   getExamplesContentDir,
   getExamplesRoutePath,
   getGuideContentDir,

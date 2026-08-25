@@ -1,0 +1,352 @@
+---
+import { rootPackageName } from "@configs/project.js";
+import { sidebarTabs } from "@configs";
+import DocLayout from "@layouts/DocLayout.astro";
+import ApiSurface from "../components/ApiSurface.astro";
+import ApiCallableSection from "../components/ApiCallableSection.astro";
+
+interface ApiSection {
+  order: number;
+  parent?: string;
+  kind: string;
+  name: string;
+  signature: string;
+  description: string;
+  tags: string[];
+  callable?: {
+    signature: string;
+    typeParameters: Array<{
+      name: string;
+      constraint?: string;
+      default?: string;
+      description: string;
+    }>;
+    parameters: Array<{
+      name: string;
+      type: string;
+      optional: boolean;
+      rest: boolean;
+      defaultValue: string;
+      description: string;
+    }>;
+    returns?: {
+      type: string;
+      description: string;
+    };
+  };
+}
+
+interface ApiCollectionEntry {
+  id: string;
+  data: {
+    title: string;
+    description: string;
+    filePath: string;
+    source: string;
+    sections: ApiSection[];
+  };
+}
+
+interface ApiSectionGroup {
+  order: number;
+  name: string;
+  items: ApiSection[];
+  description: string;
+  tags: string[];
+}
+
+interface MemberBucket {
+  id: string;
+  label: string;
+  groups: ApiSectionGroup[];
+  kind: "constructor" | "properties" | "methods" | "additional";
+}
+
+interface Props {
+  entry: ApiCollectionEntry;
+  groups: Array<[string, Array<{ slug: string; name: string }>]>;
+}
+
+const { entry, groups } = Astro.props as Props;
+const sections = entry.data.sections;
+const topLevelSections = sections.filter((section) => !section.parent);
+const classSection = topLevelSections.find((section) => section.kind === "class") ?? null;
+const childSections = new Map<string, ApiSection[]>();
+
+for (const section of sections) {
+  if (!section.parent) {
+    continue;
+  }
+
+  if (!childSections.has(section.parent)) {
+    childSections.set(section.parent, []);
+  }
+
+  childSections.get(section.parent)?.push(section);
+}
+
+if (!classSection) {
+  throw new Error("ApiClassEntry requires a class section");
+}
+
+function splitParagraphs(value: string): string[] {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+function groupId(group: ApiSectionGroup): string {
+  return `section-${group.order}`;
+}
+
+function buildSectionGroups(items: ApiSection[]): ApiSectionGroup[] {
+  const groups = new Map<string, ApiSectionGroup>();
+
+  for (const item of [...items].sort((a, b) => a.order - b.order)) {
+    const existing = groups.get(item.name);
+
+    if (!existing) {
+      groups.set(item.name, {
+        order: item.order,
+        name: item.name,
+        items: [item],
+        description: item.description,
+        tags: [...item.tags]
+      });
+      continue;
+    }
+
+    existing.items.push(item);
+    existing.order = Math.min(existing.order, item.order);
+
+    if (!existing.description && item.description) {
+      existing.description = item.description;
+    }
+
+    for (const tag of item.tags) {
+      if (!existing.tags.includes(tag)) {
+        existing.tags.push(tag);
+      }
+    }
+  }
+
+  return [...groups.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+}
+
+function shouldShowSignature(section: ApiSection, groupSize = 1): boolean {
+  if (section.kind === "class") {
+    return false;
+  }
+
+  return groupSize > 1 || section.signature !== section.name;
+}
+
+function createBucket(
+  id: MemberBucket["id"],
+  label: string,
+  kind: MemberBucket["kind"],
+  items: ApiSection[]
+): MemberBucket | null {
+  const groups = buildSectionGroups(items);
+  if (groups.length === 0) {
+    return null;
+  }
+
+  return {
+    id,
+    label,
+    kind,
+    groups
+  };
+}
+
+const classMembers = childSections.get(classSection.name) ?? [];
+const memberBuckets = [
+  createBucket(
+    "constructor",
+    "Constructor",
+    "constructor",
+    classMembers.filter((section) => section.kind === "constructor")
+  ),
+  createBucket(
+    "properties",
+    "Properties",
+    "properties",
+    classMembers.filter((section) => section.kind === "property" || section.kind === "getter" || section.kind === "setter")
+  ),
+  createBucket(
+    "methods",
+    "Methods",
+    "methods",
+    classMembers.filter((section) => section.kind === "method")
+  ),
+  createBucket(
+    "additional",
+    "Additional",
+    "additional",
+    topLevelSections.filter((section) => section !== classSection)
+  )
+].filter((bucket): bucket is MemberBucket => bucket !== null);
+---
+
+<DocLayout title={`Class ${classSection.name} | ${rootPackageName}`} tabs={sidebarTabs}>
+  <ApiSurface groups={groups} activeSlug={entry.id}>
+    <div class="api-page">
+      <header class="api-header">
+        <h1>Class {classSection.name}</h1>
+        <p class="lead">{classSection.description}</p>
+        {classSection.tags.length ? (
+          <div class="notes">
+            {classSection.tags.map((tag) => (
+              <p><code>{tag}</code></p>
+            ))}
+          </div>
+        ) : null}
+      </header>
+
+      <div class="api-sections">
+        {memberBuckets.map((bucket) => (
+          <section class="api-group" id={bucket.id}>
+            <h2>{bucket.label}</h2>
+            <div class="member-list">
+              {bucket.groups.map((group) => (
+                <article class="member-section" id={groupId(group)}>
+                  {bucket.kind === "constructor" ? null : (
+                    <header class="member-header">
+                      <h3>{group.name}</h3>
+                    </header>
+                  )}
+                  <div class="signature-list">
+                    {group.items.map((item) => (
+                      <ApiCallableSection section={item} showSignature={shouldShowSignature(item, group.items.length)} />
+                    ))}
+                  </div>
+                  {splitParagraphs(group.description).map((paragraph) => <p>{paragraph}</p>)}
+                  {group.tags.length > 0 ? (
+                    <ul class="tag-list">
+                      {group.tags.map((tag) => (
+                        <li><code>{tag}</code></li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  </ApiSurface>
+</DocLayout>
+
+<style>
+  .api-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    max-width: 70rem;
+  }
+
+  .api-header {
+    display: grid;
+    gap: 0.65rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .api-header h1 {
+    margin: 0;
+    font-size: clamp(2.25rem, 4vw, 3.4rem);
+    line-height: 1.05;
+  }
+
+  .api-header .lead {
+    max-width: 70ch;
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .notes {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+  }
+
+  .notes p {
+    margin: 0;
+  }
+
+  .api-sections {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .api-group {
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .api-group h2,
+  .member-header h3 {
+    margin: 0;
+    border: 0;
+    padding: 0;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .api-group h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .member-list {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .member-section {
+    display: grid;
+    gap: 0.5rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .member-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .signature-list {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .api-page p {
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+  }
+
+  .tag-list li {
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--border);
+    background: var(--surface-3);
+  }
+
+  .tag-list code {
+    color: var(--text);
+    font-size: 0.82rem;
+  }
+</style>
