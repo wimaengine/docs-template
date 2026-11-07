@@ -24,9 +24,12 @@ const { groups, activeSlug, blank = false } = Astro.props as Props;
 
 <style>
   .api-shell {
-    width: 100%;
+    width: calc(100% - 17.5rem + 2rem);
+    height: calc(100vh - 4rem);
     box-sizing: border-box;
-    padding-right: 17.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   .api-main {
@@ -43,7 +46,9 @@ const { groups, activeSlug, blank = false } = Astro.props as Props;
 
   @media (max-width: 1100px) {
     .api-shell {
-      padding-right: 0;
+      width: 100%;
+      height: auto;
+      overflow: visible;
     }
 
     .api-main {
