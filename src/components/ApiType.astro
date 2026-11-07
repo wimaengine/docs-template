@@ -1,5 +1,6 @@
 ---
 import { getApiRoutePath } from "../config/site.js";
+import { getMdnTypeUrl } from "../utils/mdn.js";
 import { withBase } from "../utils/url.js";
 
 interface ApiTypeLink {
@@ -11,6 +12,7 @@ interface ApiTypeLink {
 interface TypePart {
   text: string;
   slug?: string;
+  href?: string;
 }
 
 interface Props {
@@ -30,7 +32,12 @@ for (const link of links) {
   }
 }
 
-function getReferenceLink(reference: any): ApiTypeLink | undefined {
+interface ResolvedTypeLink {
+  slug?: string;
+  href?: string;
+}
+
+function getReferenceLink(reference: any): ResolvedTypeLink | undefined {
   if (typeof reference?.target === "number") {
     const targetLink = linksById.get(reference.target);
     if (targetLink) {
@@ -38,17 +45,27 @@ function getReferenceLink(reference: any): ApiTypeLink | undefined {
     }
   }
 
-  if (reference?.target !== undefined) {
-    return undefined;
+  const name = reference?.name ?? reference?.qualifiedName;
+
+  if (reference?.target === undefined) {
+    const nameLink = linksByName.get(name);
+    if (nameLink) {
+      return nameLink;
+    }
   }
 
-  const name = reference?.name ?? reference?.qualifiedName;
-  const nameLink = linksByName.get(name);
-  return nameLink ?? undefined;
+  const mdnUrl = getMdnTypeUrl(name);
+  return mdnUrl ? { href: mdnUrl } : undefined;
 }
 
 function textPart(text: unknown): TypePart[] {
   return [{ text: String(text ?? "") }];
+}
+
+function linkedTextPart(text: unknown): TypePart[] {
+  const value = String(text ?? "");
+  const mdnUrl = getMdnTypeUrl(value);
+  return mdnUrl ? [{ text: value, href: mdnUrl }] : textPart(value);
 }
 
 function joinTypeParts(types: any[], separator: string): TypePart[] {
@@ -77,16 +94,22 @@ function getTypeParts(value: any): TypePart[] {
 
   if (typeof value === "string") {
     const link = linksByName.get(value);
-    return link ? [{ text: value, slug: link.slug }] : textPart(value);
+    return link
+      ? [{ text: value, slug: link.slug }]
+      : linkedTextPart(value);
   }
 
   switch (value.type) {
     case "intrinsic":
-      return textPart(value.name ?? "unknown");
+      return linkedTextPart(value.name ?? "unknown");
     case "reference": {
       const name = value.name ?? value.qualifiedName ?? "unknown";
       const link = getReferenceLink(value);
-      const parts: TypePart[] = [{ text: name, slug: link?.slug }];
+      const parts: TypePart[] = [{
+        text: name,
+        slug: link?.slug,
+        href: link?.href
+      }];
       const typeArguments = value.typeArguments ?? [];
 
       if (typeArguments.length === 0) {
@@ -122,7 +145,7 @@ function getTypeParts(value: any): TypePart[] {
         ...textPart("]")
       ];
     case "literal":
-      return textPart(formatLiteralValue(value.value));
+      return linkedTextPart(formatLiteralValue(value.value));
     case "typeOperator":
       return [
         ...textPart(`${value.operator ?? ""} `.trimEnd() + " "),
@@ -181,11 +204,18 @@ function getTypeParts(value: any): TypePart[] {
 }
 
 const parts = getTypeParts(type);
+
+function getPartHref(part: TypePart): string | undefined {
+  return part.href ?? (part.slug ? withBase(getApiRoutePath(part.slug)) : undefined);
+}
 ---
 
-{parts.map((part) => part.slug ? (
-  <a class="api-type-link" href={withBase(getApiRoutePath(part.slug))}>{part.text}</a>
-) : part.text)}
+{parts.map((part) => {
+  const href = getPartHref(part);
+  return href ? (
+    <a class="api-type-link" href={href}>{part.text}</a>
+  ) : part.text;
+})}
 
 <style>
   .api-type-link {
