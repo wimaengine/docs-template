@@ -1,7 +1,6 @@
 ---
 import {
   formatDefaultValue,
-  formatParameter,
   formatType,
   getParameterDescription,
   getReflectionDescription,
@@ -12,17 +11,26 @@ import {
   ReflectionKind,
   splitParagraphs
 } from "../utils/typedoc.js";
+import ApiType from "./ApiType.astro";
+
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
 
 interface Props {
   reflection: Record<string, any>;
   showDescription?: boolean;
   showTags?: boolean;
+  typeLinks?: ApiTypeLink[];
 }
 
 const {
   reflection,
   showDescription = true,
-  showTags = true
+  showTags = true,
+  typeLinks = []
 } = Astro.props as Props;
 
 const signatures = getReflectionSignatures(reflection);
@@ -32,6 +40,7 @@ const entries = (signatures.length > 0 ? signatures : [null]).map((signature) =>
   typeParameters: getTypeParameters(signature ?? reflection),
   parameters: signature?.parameters ?? [],
   returnType: signature && reflection.kind !== ReflectionKind.Constructor ? formatType(signature.type) : "",
+  returnTypeValue: signature && reflection.kind !== ReflectionKind.Constructor ? signature.type : null,
   returnDescription: signature ? getReturnDescription(reflection, signature) : ""
 }));
 const defaultValue = formatDefaultValue(reflection.defaultValue);
@@ -59,8 +68,18 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
                   <p class="reflection-item-name">
                     <code>
                       {typeParameter.name}
-                      {typeParameter.constraint ? ` extends ${typeParameter.constraint}` : ""}
-                      {typeParameter.defaultValue ? ` = ${typeParameter.defaultValue}` : ""}
+                      {typeParameter.constraint ? (
+                        <>
+                          {" extends "}
+                          <ApiType type={typeParameter.type} links={typeLinks} />
+                        </>
+                      ) : null}
+                      {typeParameter.defaultValue ? (
+                        <>
+                          {" = "}
+                          <ApiType type={typeParameter.default} links={typeLinks} />
+                        </>
+                      ) : null}
                     </code>
                   </p>
                   {typeParameter.description ? (
@@ -78,29 +97,36 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
           <section class="reflection-meta">
             <h4>Parameters</h4>
             <div class="reflection-list">
-              {entry.parameters.map((parameter) => (
-                <div class="reflection-item">
-                  <p class="reflection-item-name">
-                    {parameter.flags?.isRest ? <span class="reflection-flag">Rest</span> : parameter.flags?.isOptional ? <span class="reflection-flag">Optional</span> : null}
-                    <code>{formatParameter(parameter)}</code>
-                  </p>
-                  {getParameterDescription(parameter) ? (
-                    <div class="reflection-item-description">
-                      {splitParagraphs(getParameterDescription(parameter)).map((paragraph) => <p>{paragraph}</p>)}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+              {entry.parameters.map((parameter) => {
+                const flags = parameter.flags ?? {};
+                const name = String(parameter.name || "parameter").trim();
+                const rest = flags.isRest ? "..." : "";
+                const optional = flags.isOptional && !flags.isRest ? "?" : "";
+                const defaultValue = formatDefaultValue(parameter.defaultValue);
+
+                return (
+                  <div class="reflection-item">
+                    <p class="reflection-item-name">
+                      {flags.isRest ? <span class="reflection-flag">Rest</span> : flags.isOptional ? <span class="reflection-flag">Optional</span> : null}
+                      <code>{rest}{name}{optional}: <ApiType type={parameter.type ?? "unknown"} links={typeLinks} />{defaultValue ? ` = ${defaultValue}` : ""}</code>
+                    </p>
+                    {getParameterDescription(parameter) ? (
+                      <div class="reflection-item-description">
+                        {splitParagraphs(getParameterDescription(parameter)).map((paragraph) => <p>{paragraph}</p>)}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </section>
         ) : null}
 
         {entry.returnType ? (
           <section class="reflection-meta">
-            <h4>Returns</h4>
             <div class="reflection-list">
               <div class="reflection-item">
-                <p class="reflection-item-name"><code>{entry.returnType}</code></p>
+                <p class="reflection-item-name"><code><ApiType type={entry.returnTypeValue} links={typeLinks} /></code></p>
                 {entry.returnDescription ? (
                   <div class="reflection-item-description">
                     {splitParagraphs(entry.returnDescription).map((paragraph) => <p>{paragraph}</p>)}

@@ -192,7 +192,9 @@ function formatDefaultValue(value) {
 function getTypeParameters(reflection) {
   return (reflection?.typeParameters ?? []).map((typeParameter) => ({
     name: typeParameter.name,
+    type: typeParameter.type,
     constraint: formatType(typeParameter.type),
+    default: typeParameter.default,
     defaultValue: formatDefaultValue(typeParameter.default),
     description: displayPartsToText(typeParameter.comment?.summary)
   }));

@@ -23,12 +23,19 @@ interface ApiCollectionEntry {
   data: TypeDocReflection;
 }
 
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 interface Props {
   entry: ApiCollectionEntry;
   groups: Array<[string, Array<{ slug: string; name: string }>]>;
+  typeLinks: ApiTypeLink[];
 }
 
-const { entry, groups } = Astro.props as Props;
+const { entry, groups, typeLinks } = Astro.props as Props;
 const reflection = entry.data;
 const description = getReflectionDescriptionForDisplay(reflection);
 const tags = getReflectionTagsForDisplay(reflection);
@@ -59,7 +66,7 @@ const members = getVisibleReflectionChildren(reflection)
                 <header class="member-header">
                   <h3>{member.name}</h3>
                 </header>
-                <ApiReflection reflection={member} />
+                <ApiReflection reflection={member} typeLinks={typeLinks} />
               </article>
             ))}
           </div>

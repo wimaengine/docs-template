@@ -1,0 +1,202 @@
+---
+import { getApiRoutePath } from "../config/site.js";
+import { withBase } from "../utils/url.js";
+
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface TypePart {
+  text: string;
+  slug?: string;
+}
+
+interface Props {
+  type: any;
+  links?: ApiTypeLink[];
+}
+
+const { type, links = [] } = Astro.props as Props;
+const linksById = new Map(links.map((link) => [link.id, link]));
+const linksByName = new Map<string, ApiTypeLink | null>();
+
+for (const link of links) {
+  if (!linksByName.has(link.name)) {
+    linksByName.set(link.name, link);
+  } else {
+    linksByName.set(link.name, null);
+  }
+}
+
+function getReferenceLink(reference: any): ApiTypeLink | undefined {
+  if (typeof reference?.target === "number") {
+    const targetLink = linksById.get(reference.target);
+    if (targetLink) {
+      return targetLink;
+    }
+  }
+
+  if (reference?.target !== undefined) {
+    return undefined;
+  }
+
+  const name = reference?.name ?? reference?.qualifiedName;
+  const nameLink = linksByName.get(name);
+  return nameLink ?? undefined;
+}
+
+function textPart(text: unknown): TypePart[] {
+  return [{ text: String(text ?? "") }];
+}
+
+function joinTypeParts(types: any[], separator: string): TypePart[] {
+  return types.flatMap((item, index) => [
+    ...(index > 0 ? textPart(separator) : []),
+    ...getTypeParts(item)
+  ]);
+}
+
+function formatLiteralValue(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
+function getTypeParts(value: any): TypePart[] {
+  if (!value) {
+    return [];
+  }
+
+  if (typeof value === "string") {
+    const link = linksByName.get(value);
+    return link ? [{ text: value, slug: link.slug }] : textPart(value);
+  }
+
+  switch (value.type) {
+    case "intrinsic":
+      return textPart(value.name ?? "unknown");
+    case "reference": {
+      const name = value.name ?? value.qualifiedName ?? "unknown";
+      const link = getReferenceLink(value);
+      const parts: TypePart[] = [{ text: name, slug: link?.slug }];
+      const typeArguments = value.typeArguments ?? [];
+
+      if (typeArguments.length === 0) {
+        return parts;
+      }
+
+      return [
+        ...parts,
+        ...textPart("<"),
+        ...joinTypeParts(typeArguments, ", "),
+        ...textPart(">")
+      ];
+    }
+    case "array": {
+      const elementParts = getTypeParts(value.elementType);
+      const needsGrouping = ["union", "intersection"].includes(value.elementType?.type);
+
+      return [
+        ...(needsGrouping ? textPart("(") : []),
+        ...elementParts,
+        ...(needsGrouping ? textPart(")") : []),
+        ...textPart("[]")
+      ];
+    }
+    case "union":
+      return joinTypeParts(value.types ?? [], " | ");
+    case "intersection":
+      return joinTypeParts(value.types ?? [], " & ");
+    case "tuple":
+      return [
+        ...textPart("["),
+        ...joinTypeParts(value.elements ?? [], ", "),
+        ...textPart("]")
+      ];
+    case "literal":
+      return textPart(formatLiteralValue(value.value));
+    case "typeOperator":
+      return [
+        ...textPart(`${value.operator ?? ""} `.trimEnd() + " "),
+        ...getTypeParts(value.target)
+      ];
+    case "indexedAccess":
+      return [
+        ...getTypeParts(value.objectType),
+        ...textPart("["),
+        ...getTypeParts(value.indexType),
+        ...textPart("]")
+      ];
+    case "query":
+      return [
+        ...textPart("typeof "),
+        ...getTypeParts(value.queryType)
+      ];
+    case "conditional":
+      return [
+        ...getTypeParts(value.checkType),
+        ...textPart(" extends "),
+        ...getTypeParts(value.extendsType),
+        ...textPart(" ? "),
+        ...getTypeParts(value.trueType),
+        ...textPart(" : "),
+        ...getTypeParts(value.falseType)
+      ];
+    case "namedTupleMember":
+      return [
+        ...textPart(value.isRest ? "..." : ""),
+        ...textPart(value.name ?? "item"),
+        ...textPart(value.isOptional ? "?" : ""),
+        ...textPart(": "),
+        ...getTypeParts(value.element)
+      ];
+    case "optional":
+      return [...getTypeParts(value.elementType), ...textPart("?")];
+    case "rest":
+      return [...textPart("..."), ...getTypeParts(value.elementType)];
+    case "inferred":
+      return textPart(`infer ${value.name ?? "T"}`);
+    case "predicate":
+      return [
+        ...textPart(`${value.name ?? "value"} is `),
+        ...getTypeParts(value.targetType)
+      ];
+    case "templateLiteral":
+      return textPart(value.head ?? "template literal");
+    case "reflection":
+      return textPart("object");
+    default: {
+      const name = value.name ?? value.qualifiedName;
+      return name ? textPart(name) : textPart(value.type ?? "unknown");
+    }
+  }
+}
+
+const parts = getTypeParts(type);
+---
+
+{parts.map((part) => part.slug ? (
+  <a class="api-type-link" href={withBase(getApiRoutePath(part.slug))}>{part.text}</a>
+) : part.text)}
+
+<style>
+  .api-type-link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 0.15em;
+  }
+
+  .api-type-link:hover {
+    color: var(--accent);
+    text-decoration-color: currentColor;
+  }
+</style>

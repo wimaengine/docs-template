@@ -24,12 +24,19 @@ interface ApiCollectionEntry {
   data: TypeDocReflection;
 }
 
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 interface Props {
   entry: ApiCollectionEntry;
   groups: Array<[string, Array<{ slug: string; name: string }>]>;
+  typeLinks: ApiTypeLink[];
 }
 
-const { entry, groups } = Astro.props as Props;
+const { entry, groups, typeLinks } = Astro.props as Props;
 const reflection = entry.data;
 const description = getReflectionDescriptionForDisplay(reflection);
 const tags = getReflectionTagsForDisplay(reflection);
@@ -52,7 +59,7 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
       </header>
 
       <section class="api-section api-definition">
-        <ApiReflection reflection={reflection} showDescription={false} showTags={false} />
+        <ApiReflection reflection={reflection} showDescription={false} showTags={false} typeLinks={typeLinks} />
       </section>
 
       {children.length > 0 ? (
@@ -65,7 +72,7 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
                   <h3>{child.name}</h3>
                   <p class="member-kind">{getReflectionKindName(child.kind)}</p>
                 </header>
-                <ApiReflection reflection={child} />
+                <ApiReflection reflection={child} typeLinks={typeLinks} />
               </article>
             ))}
           </div>

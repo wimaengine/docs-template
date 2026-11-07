@@ -4,8 +4,8 @@ import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import ApiReflection from "../components/ApiReflection.astro";
+import ApiType from "../components/ApiType.astro";
 import {
-  formatType,
   getReflectionDescriptionForDisplay,
   getReflectionKindName,
   getReflectionSignatures,
@@ -26,6 +26,12 @@ interface ApiCollectionEntry {
   data: TypeDocReflection;
 }
 
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 interface MemberBucket {
   id: string;
   label: string;
@@ -36,9 +42,10 @@ interface MemberBucket {
 interface Props {
   entry: ApiCollectionEntry;
   groups: Array<[string, Array<{ slug: string; name: string }>]>;
+  typeLinks: ApiTypeLink[];
 }
 
-const { entry, groups } = Astro.props as Props;
+const { entry, groups, typeLinks } = Astro.props as Props;
 const reflection = entry.data;
 const members = getVisibleReflectionChildren(reflection);
 const description = getReflectionDescriptionForDisplay(reflection);
@@ -64,9 +71,9 @@ function getMemberModifiers(member: TypeDocReflection): string[] {
   ].filter((modifier): modifier is string => modifier !== null);
 }
 
-function getMemberType(member: TypeDocReflection): string {
+function getMemberType(member: TypeDocReflection): any {
   const signature = getReflectionSignatures(member)[0];
-  return formatType(member.type ?? signature?.type);
+  return member.type ?? signature?.type;
 }
 
 const memberBuckets = [
@@ -124,14 +131,14 @@ const memberBuckets = [
                         <h3>
                           {getMemberModifiers(member).map((modifier) => (
                             <span class="member-modifier">[{modifier}]</span>
-                          ))}<span>{member.name}{bucket.kind === "methods" ? "()" : ""}</span>{memberType ? <span class="member-type">: {memberType}</span> : null}
+                          ))}<span>{member.name}{bucket.kind === "methods" ? "()" : ""}</span>{memberType ? <span class="member-type">: <ApiType type={memberType} links={typeLinks} /></span> : null}
                         </h3>
                         {bucket.kind === "properties" || bucket.kind === "methods" ? null : (
                           <p class="member-kind">{getReflectionKindName(member.kind)}</p>
                         )}
                       </header>
                     )}
-                    <ApiReflection reflection={member} />
+                    <ApiReflection reflection={member} typeLinks={typeLinks} />
                   </article>
                 );
               })}
