@@ -198,27 +198,6 @@ function getTypeParameters(reflection) {
   }));
 }
 
-function formatTypeParameters(signature) {
-  const typeParameters = getTypeParameters(signature);
-  if (typeParameters.length === 0) {
-    return "";
-  }
-
-  return `<${typeParameters.map((typeParameter) => {
-    const parts = [typeParameter.name];
-
-    if (typeParameter.constraint) {
-      parts.push(`extends ${typeParameter.constraint}`);
-    }
-
-    if (typeParameter.defaultValue) {
-      parts.push(`= ${typeParameter.defaultValue}`);
-    }
-
-    return parts.join(" ");
-  }).join(", ")}>`;
-}
-
 function formatParameter(parameter) {
   const flags = parameter.flags ?? {};
   const name = normalizeInlineText(parameter.name || "parameter");
@@ -240,58 +219,6 @@ function getReflectionSignatures(reflection) {
   }
 
   return signatures;
-}
-
-function formatReflectionSignature(reflection, signature) {
-  if (reflection.kind === ReflectionKind.EnumMember) {
-    const value = formatDefaultValue(reflection.defaultValue) || formatType(reflection.type);
-    return value ? `${reflection.name} = ${value}` : reflection.name;
-  }
-
-  if (reflection.kind === ReflectionKind.TypeAlias) {
-    return `type ${reflection.name}${formatTypeParameters(reflection)} = ${formatType(reflection.type) || "unknown"}`;
-  }
-
-  if (reflection.kind === ReflectionKind.Interface) {
-    return `interface ${reflection.name}${formatTypeParameters(reflection)}`;
-  }
-
-  if (reflection.kind === ReflectionKind.Class) {
-    return `class ${reflection.name}${formatTypeParameters(reflection)}`;
-  }
-
-  if (reflection.kind === ReflectionKind.Enum) {
-    return `enum ${reflection.name}`;
-  }
-
-  if (reflection.kind === ReflectionKind.Variable) {
-    const keyword = reflection.flags?.isConst ? "const" : "let";
-    const type = formatType(reflection.type);
-    return `${keyword} ${reflection.name}${type ? `: ${type}` : ""}`;
-  }
-
-  if (reflection.kind === ReflectionKind.Property && !signature) {
-    const readonly = reflection.flags?.isReadonly ? "readonly " : "";
-    const optional = reflection.flags?.isOptional ? "?" : "";
-    const type = formatType(reflection.type) || "unknown";
-    return `${readonly}${reflection.name}${optional}: ${type}`;
-  }
-
-  if (!signature) {
-    return reflection.name;
-  }
-
-  const flags = reflection.flags ?? {};
-  const staticPrefix = flags.isStatic ? "static " : "";
-  const abstractPrefix = flags.isAbstract ? "abstract " : "";
-  const constructor = reflection.kind === ReflectionKind.Constructor;
-  const name = constructor ? "constructor" : signature.name || reflection.name;
-  const typeParameters = formatTypeParameters(signature);
-  const parameters = (signature.parameters ?? []).map(formatParameter).join(", ");
-  const returnType = formatType(signature.type);
-  const returnSuffix = constructor || !returnType ? "" : `: ${returnType}`;
-
-  return `${abstractPrefix}${staticPrefix}${name}${typeParameters}(${parameters})${returnSuffix}`;
 }
 
 function getReflectionDescriptionForDisplay(reflection) {
@@ -337,7 +264,6 @@ export {
   displayPartsToText,
   formatDefaultValue,
   formatParameter,
-  formatReflectionSignature,
   formatType,
   getBlockTagDescription,
   getParameterDescription,

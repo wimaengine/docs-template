@@ -2,7 +2,6 @@
 import {
   formatDefaultValue,
   formatParameter,
-  formatReflectionSignature,
   formatType,
   getParameterDescription,
   getReflectionDescription,
@@ -17,21 +16,17 @@ import {
 interface Props {
   reflection: Record<string, any>;
   showDescription?: boolean;
-  showSignature?: boolean;
   showTags?: boolean;
 }
 
 const {
   reflection,
   showDescription = true,
-  showSignature = true,
   showTags = true
 } = Astro.props as Props;
 
 const signatures = getReflectionSignatures(reflection);
 const entries = (signatures.length > 0 ? signatures : [null]).map((signature) => ({
-  signature,
-  text: formatReflectionSignature(reflection, signature),
   description: getReflectionDescription(reflection, signature),
   tags: getReflectionTags(reflection, signature),
   typeParameters: getTypeParameters(signature ?? reflection),
@@ -40,7 +35,7 @@ const entries = (signatures.length > 0 ? signatures : [null]).map((signature) =>
   returnDescription: signature ? getReturnDescription(reflection, signature) : ""
 }));
 const defaultValue = formatDefaultValue(reflection.defaultValue);
-const shouldRender = showSignature || showDescription || showTags || Boolean(defaultValue) || entries.some((entry) => (
+const shouldRender = showDescription || showTags || Boolean(defaultValue) || entries.some((entry) => (
   entry.typeParameters.length > 0 || entry.parameters.length > 0 || Boolean(entry.returnType)
 ));
 ---
@@ -49,12 +44,6 @@ const shouldRender = showSignature || showDescription || showTags || Boolean(def
   <article class="api-reflection">
     {entries.map((entry) => (
       <div class="api-reflection-entry">
-        {showSignature ? (
-          <p class="signature">
-            <code>{entry.text}</code>
-          </p>
-        ) : null}
-
         {showDescription && entry.description ? (
           <div class="reflection-description">
             {splitParagraphs(entry.description).map((paragraph) => <p>{paragraph}</p>)}
@@ -149,21 +138,6 @@ const shouldRender = showSignature || showDescription || showTags || Boolean(def
 
   .api-reflection-entry + .api-reflection-entry {
     padding-top: 0.9rem;
-  }
-
-  .signature {
-    margin: 0;
-    color: var(--accent-secondary);
-    font-size: 0.92rem;
-  }
-
-  .signature code {
-    display: inline-block;
-    max-width: 100%;
-    overflow-x: auto;
-    padding: 0.2rem 0.35rem;
-    background: var(--code-bg);
-    color: var(--code-text);
   }
 
   .reflection-description,
