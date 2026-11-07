@@ -43,7 +43,7 @@ const modifiers = [
 ].filter((modifier): modifier is string => modifier !== null);
 ---
 
-{modifiers.map((modifier) => <span class="member-modifier">[{modifier}]</span>)}
+{modifiers.map((modifier) => <span class="member-modifier">{modifier}</span>)}
 {isCallable ? (
   <ApiSignature
     reflection={reflection}
@@ -61,8 +61,13 @@ const modifiers = [
 
 <style>
   .member-modifier {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     margin-right: 0.35rem;
+    padding: 0.12rem 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-3);
     color: var(--accent-secondary);
     font-size: 0.72rem;
     font-weight: 800;

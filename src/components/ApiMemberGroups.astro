@@ -94,9 +94,10 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
   {memberBuckets.map((bucket) => (
     <details class="api-group" id={bucket.id} open>
       <summary class="api-group-summary">
-        <span class="api-group-title" role="heading" aria-level="2">{bucket.label}</span>
+        <h2 class="api-group-title">{bucket.label}</h2>
         <span class="api-group-toggle" aria-hidden="true">›</span>
       </summary>
+      <hr class="api-group-rule" />
       <div class="member-list">
         {bucket.items.map((member) => (
           <article class="member-section" id={`member-${member.id}`}>
@@ -153,13 +154,17 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
   .api-group-title,
   .member-header h3 {
     margin: 0;
+    padding: 0;
     color: var(--text);
     line-height: 1.2;
   }
 
-  .api-group-title {
-    font-size: 1.1rem;
-    font-weight: 700;
+  .api-group-rule {
+    display: block;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
   }
 
   .api-group-toggle {
@@ -188,10 +193,6 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
   .member-header {
     display: grid;
     gap: 0.25rem;
-  }
-
-  .member-header h3 {
-    font-size: 1.2rem;
   }
 
   .member-kind {

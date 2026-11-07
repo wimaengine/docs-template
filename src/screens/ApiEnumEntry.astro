@@ -60,9 +60,10 @@ const members = getVisibleReflectionChildren(reflection)
       {members.length > 0 ? (
         <details class="api-group" id="values" open>
           <summary class="api-group-summary">
-            <span class="api-group-title" role="heading" aria-level="2">Values</span>
+            <h2 class="api-group-title">Values</h2>
             <span class="api-group-toggle" aria-hidden="true">›</span>
           </summary>
+          <hr class="api-group-rule" />
           <div class="member-list">
             {members.map((member) => (
               <article class="member-section" id={`member-${member.id}`}>
@@ -95,8 +96,6 @@ const members = getVisibleReflectionChildren(reflection)
 
   .api-header h1 {
     margin: 0;
-    font-size: clamp(2.25rem, 4vw, 3.4rem);
-    line-height: 1.05;
   }
 
   .section-label {
@@ -153,13 +152,17 @@ const members = getVisibleReflectionChildren(reflection)
   .api-group-title,
   .member-header h3 {
     margin: 0;
+    padding: 0;
     color: var(--text);
     line-height: 1.2;
   }
 
-  .api-group-title {
-    font-size: 1.1rem;
-    font-weight: 700;
+  .api-group-rule {
+    display: block;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
   }
 
   .api-group-toggle {
@@ -185,7 +188,4 @@ const members = getVisibleReflectionChildren(reflection)
     padding-top: 0.95rem;
   }
 
-  .member-header h3 {
-    font-size: 1.2rem;
-  }
 </style>
