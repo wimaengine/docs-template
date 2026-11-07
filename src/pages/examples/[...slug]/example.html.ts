@@ -66,6 +66,9 @@ function buildExampleHtml(title: string, importMap: string, source: string): str
       }
 
       canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
         background-color: black;
         touch-action: none;
       }
