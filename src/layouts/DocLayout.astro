@@ -281,7 +281,6 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
       h2 {
         margin-top: 2rem;
         padding-bottom: 0.35rem;
-        border-bottom: 1px solid var(--border);
         color: var(--accent);
       }
 
@@ -327,7 +326,6 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
       th,
       td {
         padding: 0.75rem 0.9rem;
-        border-bottom: 1px solid var(--border);
         vertical-align: top;
       }
 
@@ -335,10 +333,6 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
         text-align: left;
         color: var(--text);
         background: var(--surface-2);
-      }
-
-      tr:last-child td {
-        border-bottom: 0;
       }
 
       code {
