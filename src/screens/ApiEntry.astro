@@ -4,12 +4,14 @@ import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import ApiReflection from "../components/ApiReflection.astro";
+import ApiSignature from "../components/ApiSignature.astro";
 import {
   getReflectionDescriptionForDisplay,
   getReflectionKindLabel,
   getReflectionKindName,
   getReflectionTagsForDisplay,
-  getVisibleReflectionChildren
+  getVisibleReflectionChildren,
+  ReflectionKind
 } from "../utils/typedoc.js";
 
 interface TypeDocReflection {
@@ -42,6 +44,10 @@ const description = getReflectionDescriptionForDisplay(reflection);
 const tags = getReflectionTagsForDisplay(reflection);
 const children = getVisibleReflectionChildren(reflection);
 const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
+
+function isCallable(reflection: TypeDocReflection): boolean {
+  return [ReflectionKind.Function, ReflectionKind.Method, ReflectionKind.Constructor].includes(reflection.kind);
+}
 ---
 
 <DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs}>
@@ -50,6 +56,9 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
       <header class="api-header">
         <p class="section-label">{getReflectionKindName(reflection.kind)}</p>
         <h1>{reflection.name}</h1>
+        {reflection.kind === ReflectionKind.Function ? (
+          <ApiSignature reflection={reflection} typeLinks={typeLinks} />
+        ) : null}
         {description ? <p class="lead">{description}</p> : null}
         {tags.length > 0 ? (
           <div class="notes">
@@ -69,7 +78,15 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
             {children.map((child) => (
               <article class="member-section" id={`member-${child.id}`}>
                 <header class="member-header">
-                  <h3>{child.name}</h3>
+                  <h3>
+                    {isCallable(child) ? (
+                      <ApiSignature
+                        reflection={child}
+                        name={child.kind === ReflectionKind.Constructor ? "constructor" : child.name}
+                        typeLinks={typeLinks}
+                      />
+                    ) : child.name}
+                  </h3>
                   <p class="member-kind">{getReflectionKindName(child.kind)}</p>
                 </header>
                 <ApiReflection reflection={child} typeLinks={typeLinks} />
@@ -117,6 +134,11 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
     margin: 0;
     color: var(--muted);
     line-height: 1.65;
+  }
+
+  .api-header > .api-signature {
+    display: block;
+    margin: 0;
   }
 
   .notes {

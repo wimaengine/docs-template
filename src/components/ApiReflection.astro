@@ -96,28 +96,42 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
         {entry.parameters.length > 0 ? (
           <section class="reflection-meta">
             <h4>Parameters</h4>
-            <div class="reflection-list">
-              {entry.parameters.map((parameter) => {
-                const flags = parameter.flags ?? {};
-                const name = String(parameter.name || "parameter").trim();
-                const rest = flags.isRest ? "..." : "";
-                const optional = flags.isOptional && !flags.isRest ? "?" : "";
-                const defaultValue = formatDefaultValue(parameter.defaultValue);
+            <div class="reflection-table-wrap">
+              <table class="reflection-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Default</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entry.parameters.map((parameter) => {
+                    const flags = parameter.flags ?? {};
+                    const name = String(parameter.name || "parameter").trim();
+                    const rest = flags.isRest ? "..." : "";
+                    const optional = flags.isOptional && !flags.isRest ? "?" : "";
+                    const description = getParameterDescription(parameter);
+                    const defaultValue = formatDefaultValue(parameter.defaultValue);
 
-                return (
-                  <div class="reflection-item">
-                    <p class="reflection-item-name">
-                      {flags.isRest ? <span class="reflection-flag">Rest</span> : flags.isOptional ? <span class="reflection-flag">Optional</span> : null}
-                      <code>{rest}{name}{optional}: <ApiType type={parameter.type ?? "unknown"} links={typeLinks} />{defaultValue ? ` = ${defaultValue}` : ""}</code>
-                    </p>
-                    {getParameterDescription(parameter) ? (
-                      <div class="reflection-item-description">
-                        {splitParagraphs(getParameterDescription(parameter)).map((paragraph) => <p>{paragraph}</p>)}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
+                    return (
+                      <tr>
+                        <td class="reflection-parameter-name"><code>{rest}{name}{optional}</code></td>
+                        <td>
+                          {description ? (
+                            <div class="reflection-item-description">
+                              {splitParagraphs(description).map((paragraph) => <p>{paragraph}</p>)}
+                            </div>
+                          ) : <span class="reflection-empty">—</span>}
+                        </td>
+                        <td class="reflection-default-value">
+                          {defaultValue ? <code>{defaultValue}</code> : <span class="reflection-empty">—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </section>
         ) : null}
@@ -196,6 +210,59 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
   .reflection-list {
     display: grid;
     gap: 0.7rem;
+  }
+
+  .reflection-table-wrap {
+    overflow-x: auto;
+  }
+
+  .reflection-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.35rem;
+    text-align: left;
+  }
+
+  .reflection-table th {
+    padding: 0 0.75rem 0.15rem;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .reflection-table td {
+    padding: 0.7rem 0.75rem;
+    background: var(--surface-3);
+    color: var(--muted);
+    vertical-align: top;
+  }
+
+  .reflection-table td:first-child {
+    width: 20%;
+    border-radius: 0.35rem 0 0 0.35rem;
+  }
+
+  .reflection-table td:last-child {
+    width: 20%;
+    border-radius: 0 0.35rem 0.35rem 0;
+    white-space: nowrap;
+  }
+
+  .reflection-parameter-name code,
+  .reflection-default-value code {
+    color: var(--code-text);
+  }
+
+  .reflection-empty {
+    color: var(--muted);
+  }
+
+  @media (max-width: 44rem) {
+    .reflection-table {
+      min-width: 38rem;
+    }
   }
 
   .reflection-item {

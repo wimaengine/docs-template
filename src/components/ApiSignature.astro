@@ -1,0 +1,102 @@
+---
+import {
+  getReflectionSignatures,
+  getTypeParameters,
+  ReflectionKind
+} from "../utils/typedoc.js";
+import ApiType from "./ApiType.astro";
+
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface Props {
+  reflection: Record<string, any>;
+  name?: string;
+  typeLinks?: ApiTypeLink[];
+}
+
+const {
+  reflection,
+  name,
+  typeLinks = []
+} = Astro.props as Props;
+
+const signature = getReflectionSignatures(reflection)[0] ?? reflection;
+const parameters = signature?.parameters ?? [];
+const typeParameters = getTypeParameters(signature);
+const returnType = reflection.kind === ReflectionKind.Constructor ? null : signature?.type;
+const displayName = name ?? (reflection.kind === ReflectionKind.Constructor ? "constructor" : reflection.name ?? "call");
+
+function getParameterName(parameter: Record<string, any>): string {
+  const flags = parameter.flags ?? {};
+  const rest = flags.isRest ? "..." : "";
+  const optional = flags.isOptional && !flags.isRest ? "?" : "";
+  return `${rest}${String(parameter.name || "parameter").trim()}${optional}`;
+}
+---
+
+<code class="api-signature">
+  <span class="api-signature-name">{displayName}</span>
+  {typeParameters.length > 0 ? (
+    <>
+      {"<"}
+      {typeParameters.map((typeParameter, index) => (
+        <>
+          {index > 0 ? ", " : null}
+          <span class="api-signature-type-parameter">
+            {typeParameter.name}
+            {typeParameter.constraint ? (
+              <>
+                {" extends "}
+                <ApiType type={typeParameter.type} links={typeLinks} />
+              </>
+            ) : null}
+            {typeParameter.defaultValue ? (
+              <>
+                {" = "}
+                <ApiType type={typeParameter.default} links={typeLinks} />
+              </>
+            ) : null}
+          </span>
+        </>
+      ))}
+      {">"}
+    </>
+  ) : null}
+  {"("}
+  {parameters.map((parameter, index) => (
+    <>
+      {index > 0 ? ", " : null}
+      <span class="api-signature-parameter">
+        {getParameterName(parameter)}{": "}<ApiType type={parameter.type ?? "unknown"} links={typeLinks} />
+      </span>
+    </>
+  ))}
+  {")"}
+  {returnType ? (
+    <>
+      {": "}<ApiType type={returnType} links={typeLinks} />
+    </>
+  ) : null}
+</code>
+
+<style>
+  .api-signature {
+    color: var(--code-text);
+    font: inherit;
+    font-weight: 600;
+    white-space: normal;
+  }
+
+  .api-signature-name {
+    color: var(--text);
+  }
+
+  .api-signature-type-parameter,
+  .api-signature-parameter {
+    color: var(--code-text);
+  }
+</style>
