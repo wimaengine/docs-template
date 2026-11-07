@@ -1,14 +1,11 @@
 ---
 import {
   formatDefaultValue,
-  formatType,
   getParameterDescription,
   getReflectionDescription,
   getReflectionSignatures,
   getReflectionTags,
-  getReturnDescription,
   getTypeParameters,
-  ReflectionKind,
   splitParagraphs
 } from "../utils/typedoc.js";
 import ApiType from "./ApiType.astro";
@@ -38,14 +35,11 @@ const entries = (signatures.length > 0 ? signatures : [null]).map((signature) =>
   description: getReflectionDescription(reflection, signature),
   tags: getReflectionTags(reflection, signature),
   typeParameters: getTypeParameters(signature ?? reflection),
-  parameters: signature?.parameters ?? [],
-  returnType: signature && reflection.kind !== ReflectionKind.Constructor ? formatType(signature.type) : "",
-  returnTypeValue: signature && reflection.kind !== ReflectionKind.Constructor ? signature.type : null,
-  returnDescription: signature ? getReturnDescription(reflection, signature) : ""
+  parameters: signature?.parameters ?? []
 }));
 const defaultValue = formatDefaultValue(reflection.defaultValue);
 const shouldRender = showDescription || showTags || Boolean(defaultValue) || entries.some((entry) => (
-  entry.typeParameters.length > 0 || entry.parameters.length > 0 || Boolean(entry.returnType)
+  entry.typeParameters.length > 0 || entry.parameters.length > 0
 ));
 ---
 
@@ -132,21 +126,6 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
                   })}
                 </tbody>
               </table>
-            </div>
-          </section>
-        ) : null}
-
-        {entry.returnType ? (
-          <section class="reflection-meta">
-            <div class="reflection-list">
-              <div class="reflection-item">
-                <p class="reflection-item-name"><code><ApiType type={entry.returnTypeValue} links={typeLinks} /></code></p>
-                {entry.returnDescription ? (
-                  <div class="reflection-item-description">
-                    {splitParagraphs(entry.returnDescription).map((paragraph) => <p>{paragraph}</p>)}
-                  </div>
-                ) : null}
-              </div>
             </div>
           </section>
         ) : null}
