@@ -52,6 +52,26 @@ function getReflectionKindName(kind) {
   return typeof name === "string" ? name : `Kind ${kind}`;
 }
 
+function getReflectionMemberBadge(kind) {
+  if ([ReflectionKind.Constructor, ReflectionKind.ConstructorSignature].includes(kind)) {
+    return { letter: "C", name: "constructor" };
+  }
+
+  if (kind === ReflectionKind.Method) {
+    return { letter: "M", name: "method" };
+  }
+
+  if ([ReflectionKind.Property, ReflectionKind.Accessor].includes(kind)) {
+    return { letter: "P", name: "property" };
+  }
+
+  if ([ReflectionKind.Function, ReflectionKind.CallSignature].includes(kind)) {
+    return { letter: "F", name: "function" };
+  }
+
+  return null;
+}
+
 function getReflectionKindSlug(kind) {
   return getReflectionKindName(kind).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
 }
@@ -272,6 +292,7 @@ export {
   getReflectionComment,
   getReflectionDescription,
   getReflectionDescriptionForDisplay,
+  getReflectionMemberBadge,
   getReflectionKindLabel,
   getReflectionKindName,
   getReflectionKindSlug,

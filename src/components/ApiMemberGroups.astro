@@ -2,6 +2,7 @@
 import ApiMemberTitle from "./ApiMemberTitle.astro";
 import ApiReflection from "./ApiReflection.astro";
 import {
+  getReflectionMemberBadge,
   getReflectionKindName,
   ReflectionKind
 } from "../utils/typedoc.js";
@@ -77,6 +78,23 @@ const memberBuckets = [
   )
 ].filter((bucket): bucket is MemberBucket => bucket !== null);
 
+const indexedMembers = memberBuckets.flatMap((bucket) => bucket.items);
+
+function getIndexBadge(member: TypeDocReflection) {
+  return getReflectionMemberBadge(member.kind) ?? {
+    letter: getReflectionKindName(member.kind).charAt(0).toUpperCase(),
+    name: getReflectionKindName(member.kind)
+  };
+}
+
+function getIndexName(member: TypeDocReflection): string {
+  if (member.kind === ReflectionKind.Constructor || member.kind === ReflectionKind.ConstructorSignature) {
+    return "constructor";
+  }
+
+  return String(member.name || "member");
+}
+
 function shouldShowMemberKind(member: TypeDocReflection): boolean {
   return ![
     ReflectionKind.Constructor,
@@ -91,6 +109,32 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
 ---
 
 <div class="api-sections">
+  {indexedMembers.length > 0 ? (
+    <details class="api-group api-member-index" id="index" open>
+      <summary class="api-group-summary">
+        <h2 class="api-group-title">Index</h2>
+        <span class="api-group-toggle" aria-hidden="true">›</span>
+      </summary>
+      <hr class="api-group-rule" />
+      <nav aria-label="Member index">
+        <ul class="api-member-index-list">
+          {indexedMembers.map((member) => {
+            const badge = getIndexBadge(member);
+
+            return (
+              <li>
+                <a class="api-member-index-link" href={`#member-${member.id}`}>
+                  <span class="api-member-index-badge" title={badge.name}>{badge.letter}</span>
+                  <span class="api-member-index-name">{getIndexName(member)}</span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </details>
+  ) : null}
+
   {memberBuckets.map((bucket) => (
     <details class="api-group" id={bucket.id} open>
       <summary class="api-group-summary">
@@ -125,6 +169,57 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
   .api-sections {
     display: grid;
     gap: 1.25rem;
+  }
+
+  .api-member-index {
+    scroll-margin-top: 1rem;
+  }
+
+  .api-member-index-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .api-member-index-link {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 0.5rem;
+    padding: 0.25rem 0.1rem;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .api-member-index-link:hover,
+  .api-member-index-link:focus-visible {
+    color: var(--accent);
+  }
+
+  .api-member-index-badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    padding: 0.12rem 0.35rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .api-member-index-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .api-group {
@@ -188,6 +283,7 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
     display: grid;
     gap: 0.65rem;
     padding-top: 0.95rem;
+    scroll-margin-top: 1rem;
   }
 
   .member-header {
@@ -202,5 +298,17 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
     font-weight: 800;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+  }
+
+  @media (max-width: 800px) {
+    .api-member-index-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 520px) {
+    .api-member-index-list {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
