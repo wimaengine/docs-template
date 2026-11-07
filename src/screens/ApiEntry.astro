@@ -3,58 +3,25 @@ import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiSurface from "../components/ApiSurface.astro";
-import ApiCallableSection from "../components/ApiCallableSection.astro";
+import ApiReflection from "../components/ApiReflection.astro";
+import {
+  getReflectionDescriptionForDisplay,
+  getReflectionKindLabel,
+  getReflectionKindName,
+  getReflectionTagsForDisplay,
+  getVisibleReflectionChildren
+} from "../utils/typedoc.js";
 
-interface ApiSection {
-  order: number;
-  parent?: string;
-  kind: string;
+interface TypeDocReflection {
+  id: number;
   name: string;
-  signature: string;
-  description: string;
-  tags: string[];
-  callable?: {
-    signature: string;
-    typeParameters: Array<{
-      name: string;
-      constraint?: string;
-      default?: string;
-      description: string;
-    }>;
-    parameters: Array<{
-      name: string;
-      type: string;
-      optional: boolean;
-      rest: boolean;
-      defaultValue: string;
-      description: string;
-    }>;
-    returns?: {
-      type: string;
-      description: string;
-    };
-  };
+  kind: number;
+  [key: string]: any;
 }
 
 interface ApiCollectionEntry {
   id: string;
-  data: {
-    title: string;
-    name: string;
-    kind: string;
-    description: string;
-    filePath: string;
-    source: string;
-    sections: ApiSection[];
-  };
-}
-
-interface ApiSectionGroup {
-  order: number;
-  name: string;
-  items: ApiSection[];
-  description: string;
-  tags: string[];
+  data: TypeDocReflection;
 }
 
 interface Props {
@@ -63,89 +30,47 @@ interface Props {
 }
 
 const { entry, groups } = Astro.props as Props;
-const topLevelSections = entry.data.sections.filter((section) => !section.parent);
-const topLevelGroups = buildSectionGroups(topLevelSections);
-
-function splitParagraphs(value: string): string[] {
-  return value
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-}
-
-function groupId(group: ApiSectionGroup): string {
-  return `section-${group.order}`;
-}
-
-function buildSectionGroups(items: ApiSection[]): ApiSectionGroup[] {
-  const groups = new Map<string, ApiSectionGroup>();
-
-  for (const item of [...items].sort((a, b) => a.order - b.order)) {
-    const existing = groups.get(item.name);
-
-    if (!existing) {
-      groups.set(item.name, {
-        order: item.order,
-        name: item.name,
-        items: [item],
-        description: item.description,
-        tags: [...item.tags]
-      });
-      continue;
-    }
-
-    existing.items.push(item);
-    existing.order = Math.min(existing.order, item.order);
-
-    if (!existing.description && item.description) {
-      existing.description = item.description;
-    }
-
-    for (const tag of item.tags) {
-      if (!existing.tags.includes(tag)) {
-        existing.tags.push(tag);
-      }
-    }
-  }
-
-  return [...groups.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-}
-
-function shouldShowSignature(section: ApiSection, groupSize = 1): boolean {
-  return groupSize > 1 || section.signature !== section.name;
-}
+const reflection = entry.data;
+const description = getReflectionDescriptionForDisplay(reflection);
+const tags = getReflectionTagsForDisplay(reflection);
+const children = getVisibleReflectionChildren(reflection);
+const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
 ---
 
-<DocLayout title={`${entry.data.title} | ${rootPackageName}`} tabs={sidebarTabs}>
+<DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs}>
   <ApiSurface groups={groups} activeSlug={entry.id}>
     <div class="api-page">
       <header class="api-header">
-        <h1>{entry.data.title}</h1>
-        <p class="lead">{entry.data.description}</p>
+        <p class="section-label">{getReflectionKindName(reflection.kind)}</p>
+        <h1>{reflection.name}</h1>
+        {description ? <p class="lead">{description}</p> : null}
+        {tags.length > 0 ? (
+          <div class="notes">
+            {tags.map((tag) => <p><code>{tag}</code></p>)}
+          </div>
+        ) : null}
       </header>
 
-      <div class="api-sections">
-        {topLevelGroups.map((group) => (
-          <section class="api-section" id={groupId(group)}>
-            <header class="api-section-header">
-              <h2>{group.name}</h2>
-            </header>
-            <div class="signature-list">
-              {group.items.map((item) => (
-                <ApiCallableSection section={item} showSignature={shouldShowSignature(item, group.items.length)} />
-              ))}
-            </div>
-            {splitParagraphs(group.description).map((paragraph) => <p>{paragraph}</p>)}
-            {group.tags.length > 0 ? (
-              <ul class="tag-list">
-                {group.tags.map((tag) => (
-                  <li><code>{tag}</code></li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
-        ))}
-      </div>
+      <section class="api-section api-definition">
+        <ApiReflection reflection={reflection} showDescription={false} showTags={false} />
+      </section>
+
+      {children.length > 0 ? (
+        <section class="api-group">
+          <h2>Members</h2>
+          <div class="member-list">
+            {children.map((child) => (
+              <article class="member-section" id={`member-${child.id}`}>
+                <header class="member-header">
+                  <h3>{child.name}</h3>
+                  <p class="member-kind">{getReflectionKindName(child.kind)}</p>
+                </header>
+                <ApiReflection reflection={child} />
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   </ApiSurface>
 </DocLayout>
@@ -171,34 +96,8 @@ function shouldShowSignature(section: ApiSection, groupSize = 1): boolean {
     line-height: 1.05;
   }
 
-  .api-header .lead {
-    max-width: 70ch;
-  }
-
-  .notes {
-    display: grid;
-    gap: 0.4rem;
-    margin-top: 0.25rem;
-  }
-
-  .notes p {
-    margin: 0;
-  }
-
-  .api-sections {
-    display: grid;
-    gap: 1.25rem;
-  }
-
-  .api-index,
-  .api-group {
-    display: grid;
-    gap: 0.75rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-  }
-
-  .section-label {
+  .section-label,
+  .member-kind {
     margin: 0;
     color: var(--accent-secondary);
     font-size: 0.78rem;
@@ -207,44 +106,47 @@ function shouldShowSignature(section: ApiSection, groupSize = 1): boolean {
     text-transform: uppercase;
   }
 
-  .api-index h2,
+  .api-header .lead {
+    max-width: 70ch;
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .notes {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+  }
+
+  .notes p,
+  .api-page p {
+    margin: 0;
+  }
+
+  .api-section,
+  .api-group {
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .api-definition {
+    padding-top: 0;
+    border-top: 0;
+  }
+
   .api-group h2,
   .member-header h3 {
     margin: 0;
-    border: 0;
-    padding: 0;
     color: var(--text);
     line-height: 1.2;
   }
 
-  .api-index h2,
   .api-group h2 {
     font-size: 1.1rem;
     font-weight: 700;
-  }
-
-  .index-group {
-    display: grid;
-    gap: 0.6rem;
-  }
-
-  .index-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem 1rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .index-links a {
-    color: var(--text);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-  }
-
-  .index-links a:hover {
-    border-bottom-color: var(--accent);
   }
 
   .member-list {
@@ -254,72 +156,17 @@ function shouldShowSignature(section: ApiSection, groupSize = 1): boolean {
 
   .member-section {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.65rem;
     padding-top: 0.95rem;
     border-top: 1px solid var(--border);
   }
 
+  .member-header {
+    display: grid;
+    gap: 0.25rem;
+  }
+
   .member-header h3 {
     font-size: 1.2rem;
-  }
-
-  .signature-list {
-    display: grid;
-    gap: 0.9rem;
-  }
-
-  .api-page p {
-    margin: 0;
-    line-height: 1.65;
-  }
-
-  .api-page .lead {
-    color: var(--muted);
-  }
-
-  .api-page .api-section,
-  .api-page .member-section {
-    background: transparent;
-    border: 0;
-    padding: 0;
-  }
-
-  .api-page .api-section-header {
-    display: block;
-    margin: 0 0 0.6rem;
-  }
-
-  .api-page .api-section-header h2,
-  .api-page .api-section-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    border: 0;
-    padding: 0;
-    color: var(--text);
-  }
-
-  .api-page .api-section p,
-  .api-page .member-section p {
-    margin-top: 0.55rem;
-  }
-
-  .tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    list-style: none;
-    margin: 0.75rem 0 0;
-    padding: 0;
-  }
-
-  .tag-list li {
-    padding: 0.25rem 0.4rem;
-    border: 1px solid var(--border);
-    background: var(--surface-3);
-  }
-
-  .tag-list code {
-    color: var(--text);
-    font-size: 0.82rem;
   }
 </style>

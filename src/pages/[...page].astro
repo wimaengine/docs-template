@@ -2,6 +2,10 @@
 import { getCollection } from "astro:content";
 import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, routeToParam } from "@configs/site.js";
 import { withBase } from "../utils/url.js";
+import {
+  getReflectionKindSlug,
+  ReflectionKind
+} from "../utils/typedoc.js";
 import GuideIndex from "../screens/GuideIndex.astro";
 import GuideEntry from "../screens/GuideEntry.astro";
 import ExamplesIndex from "../screens/ExamplesIndex.astro";
@@ -31,28 +35,19 @@ interface ExampleCollectionEntry {
   };
 }
 
-interface ApiSection {
-  order: number;
-  parent?: string;
-  kind: string;
+interface TypeDocReflection {
+  id: number;
   name: string;
-  signature: string;
-  description: string;
-  tags: string[];
+  kind: number;
+  [key: string]: any;
 }
 
 interface ApiCollectionEntry {
   id: string;
-  data: {
-    title: string;
-    name: string;
-    kind: string;
-    description: string;
-    filePath: string;
-    source: string;
-    sections: ApiSection[];
-  };
+  data: TypeDocReflection;
 }
+
+type ApiGroups = Array<[string, Array<{ slug: string; name: string }>]>;
 
 type PageKind =
   | "guide-index"
@@ -73,19 +68,19 @@ function splitCamelCase(value: string): string {
   return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
 }
 
-function getApiKindOrder(kind: string): number {
+function getApiKindOrder(kind: number): number {
   switch (kind) {
-    case "class":
+    case ReflectionKind.Class:
       return 0;
-    case "enum":
+    case ReflectionKind.Enum:
       return 1;
-    case "constant":
+    case ReflectionKind.Variable:
       return 2;
-    case "variable":
+    case ReflectionKind.Function:
       return 3;
-    case "function":
+    case ReflectionKind.Interface:
       return 4;
-    case "typedef":
+    case ReflectionKind.TypeAlias:
       return 5;
     default:
       return 6;
@@ -131,9 +126,9 @@ export async function getStaticPaths() {
     ...apiEntriesForPaths.map((entry) => ({
       params: { page: routeToParam(getApiRoutePath(entry.id)) },
       props: {
-        kind: entry.data.kind === "class"
+        kind: entry.data.kind === ReflectionKind.Class
           ? "api-class-entry"
-          : entry.data.kind === "enum"
+          : entry.data.kind === ReflectionKind.Enum
             ? "api-enum-entry"
           : "api-entry",
         entry
@@ -186,12 +181,12 @@ const apiGroups = Object.entries(
       return a.name.localeCompare(b.name);
     })
     .reduce<Record<string, Array<{ slug: string; name: string }>>>((acc, apiModule) => {
-      const key = apiModule.kind;
+      const key = getReflectionKindSlug(apiModule.kind);
       if (!acc[key]) acc[key] = [];
       acc[key].push({ slug: apiModule.slug, name: apiModule.name });
       return acc;
     }, {})
-);
+) as ApiGroups;
 ---
 
 {guideEntry && kind === "guide-index" ? <GuideIndex entry={guideEntry} /> : null}

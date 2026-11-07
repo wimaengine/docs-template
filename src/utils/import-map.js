@@ -195,12 +195,21 @@ function resolvePackageEntry(packageName) {
 }
 
 function collectPackageNames() {
+  const buildOnlyPackages = new Set([
+    "astro",
+    "typedoc",
+    "typescript",
+    "wima-docs-website-template"
+  ]);
+
   return [
     ...new Set([
       ...Object.keys(rootPackageJson.dependencies ?? {}),
       ...Object.keys(rootPackageJson.devDependencies ?? {}),
     ]),
-  ].sort((a, b) => a.localeCompare(b));
+  ]
+    .filter((packageName) => !buildOnlyPackages.has(packageName))
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function buildPackageUrl(packageName, version, entry, isProd) {

@@ -20,21 +20,21 @@ function formatKind(value: string): string {
       return "Classes";
     case "enum":
       return "Enums";
-    case "constant":
-      return "Constants";
     case "variable":
       return "Variables";
     case "function":
       return "Functions";
-    case "typedef":
-      return "Typedefs";
+    case "interface":
+      return "Interfaces";
+    case "type-alias":
+      return "Type aliases";
     default:
-      return value;
+      return value.replace(/-/g, " ");
   }
 }
 ---
 
-<nav class="api-sidebar" aria-label="API reference">
+<nav class="api-sidebar" data-scroll-zone="api-reference" aria-label="API reference">
   <p class="api-sidebar-label">Reference</p>
 
   <div class="api-sidebar-groups">
@@ -74,6 +74,7 @@ function formatKind(value: string): string {
     width: 17.5rem;
     height: 100vh;
     overflow-y: auto;
+    overflow-anchor: none;
     padding: 1.25rem 1rem;
     border: 1px solid var(--border);
     background: var(--surface-2);

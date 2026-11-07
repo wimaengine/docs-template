@@ -3,41 +3,24 @@ import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiSurface from "../components/ApiSurface.astro";
+import ApiReflection from "../components/ApiReflection.astro";
+import {
+  getReflectionDescriptionForDisplay,
+  getReflectionTagsForDisplay,
+  getVisibleReflectionChildren,
+  ReflectionKind
+} from "../utils/typedoc.js";
 
-interface ApiSection {
-  order: number;
-  parent?: string;
-  kind: string;
+interface TypeDocReflection {
+  id: number;
   name: string;
-  signature: string;
-  description: string;
-  tags: string[];
+  kind: number;
+  [key: string]: any;
 }
 
 interface ApiCollectionEntry {
   id: string;
-  data: {
-    title: string;
-    description: string;
-    filePath: string;
-    source: string;
-    sections: ApiSection[];
-  };
-}
-
-interface ApiSectionGroup {
-  order: number;
-  name: string;
-  items: ApiSection[];
-  description: string;
-  tags: string[];
-}
-
-interface MemberBucket {
-  id: string;
-  label: string;
-  groups: ApiSectionGroup[];
-  kind: "value";
+  data: TypeDocReflection;
 }
 
 interface Props {
@@ -46,146 +29,42 @@ interface Props {
 }
 
 const { entry, groups } = Astro.props as Props;
-const sections = entry.data.sections;
-const topLevelSections = sections.filter((section) => !section.parent);
-const enumSection = topLevelSections.find((section) => section.kind === "enum") ?? null;
-const childSections = new Map<string, ApiSection[]>();
-
-for (const section of sections) {
-  if (!section.parent) {
-    continue;
-  }
-
-  if (!childSections.has(section.parent)) {
-    childSections.set(section.parent, []);
-  }
-
-  childSections.get(section.parent)?.push(section);
-}
-
-if (!enumSection) {
-  throw new Error("ApiEnumEntry requires an enum section");
-}
-
-function splitParagraphs(value: string): string[] {
-  return value
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-}
-
-function groupId(group: ApiSectionGroup): string {
-  return `section-${group.order}`;
-}
-
-function buildSectionGroups(items: ApiSection[]): ApiSectionGroup[] {
-  const groups = new Map<string, ApiSectionGroup>();
-
-  for (const item of [...items].sort((a, b) => a.order - b.order)) {
-    const existing = groups.get(item.name);
-
-    if (!existing) {
-      groups.set(item.name, {
-        order: item.order,
-        name: item.name,
-        items: [item],
-        description: item.description,
-        tags: [...item.tags]
-      });
-      continue;
-    }
-
-    existing.items.push(item);
-    existing.order = Math.min(existing.order, item.order);
-
-    if (!existing.description && item.description) {
-      existing.description = item.description;
-    }
-
-    for (const tag of item.tags) {
-      if (!existing.tags.includes(tag)) {
-        existing.tags.push(tag);
-      }
-    }
-  }
-
-  return [...groups.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-}
-
-function shouldShowSignature(section: ApiSection, groupSize = 1): boolean {
-  return groupSize > 1 || section.signature !== section.name;
-}
-
-function createBucket(
-  id: MemberBucket["id"],
-  label: string,
-  kind: MemberBucket["kind"],
-  items: ApiSection[]
-): MemberBucket | null {
-  const groups = buildSectionGroups(items);
-  if (groups.length === 0) {
-    return null;
-  }
-
-  return {
-    id,
-    label,
-    kind,
-    groups
-  };
-}
-
-const valueBucket = createBucket("values", "Values", "value", childSections.get(enumSection.name) ?? []);
+const reflection = entry.data;
+const description = getReflectionDescriptionForDisplay(reflection);
+const tags = getReflectionTagsForDisplay(reflection);
+const members = getVisibleReflectionChildren(reflection)
+  .filter((member) => member.kind === ReflectionKind.EnumMember);
 ---
 
-<DocLayout title={`Enum ${enumSection.name} | ${rootPackageName}`} tabs={sidebarTabs}>
+<DocLayout title={`Enum ${reflection.name} | ${rootPackageName}`} tabs={sidebarTabs}>
   <ApiSurface groups={groups} activeSlug={entry.id}>
     <div class="api-page">
       <header class="api-header">
-        <h1>Enum {enumSection.name}</h1>
-        <p class="lead">{enumSection.description}</p>
-        {enumSection.tags.length ? (
+        <p class="section-label">Enum</p>
+        <h1>{reflection.name}</h1>
+        {description ? <p class="lead">{description}</p> : null}
+        {tags.length > 0 ? (
           <div class="notes">
-            {enumSection.tags.map((tag) => (
-              <p><code>{tag}</code></p>
-            ))}
+            {tags.map((tag) => <p><code>{tag}</code></p>)}
           </div>
         ) : null}
       </header>
 
-      <div class="api-sections">
-        {valueBucket ? (
-          <section class="api-group" id={valueBucket.id}>
-            <h2>{valueBucket.label}</h2>
-            <div class="member-list">
-              {valueBucket.groups.map((group) => (
-                <article class="member-section" id={groupId(group)}>
-                  <header class="member-header">
-                    <h3>{group.name}</h3>
-                  </header>
-                  <div class="signature-list">
-                    {group.items.map((item) => (
-                      shouldShowSignature(item, group.items.length) ? (
-                        <p class="signature">
-                          <code>{item.signature}</code>
-                        </p>
-                      ) : null
-                    ))}
-                  </div>
-                  {splitParagraphs(group.description).map((paragraph) => <p>{paragraph}</p>)}
-                  {group.tags.length > 0 ? (
-                    <ul class="tag-list">
-                      {group.tags.map((tag) => (
-                        <li><code>{tag}</code></li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-      </div>
+      {members.length > 0 ? (
+        <section class="api-group">
+          <h2>Values</h2>
+          <div class="member-list">
+            {members.map((member) => (
+              <article class="member-section" id={`member-${member.id}`}>
+                <header class="member-header">
+                  <h3>{member.name}</h3>
+                </header>
+                <ApiReflection reflection={member} />
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   </ApiSurface>
 </DocLayout>
@@ -211,7 +90,17 @@ const valueBucket = createBucket("values", "Values", "value", childSections.get(
     line-height: 1.05;
   }
 
-  .api-header .lead {
+  .section-label {
+    margin: 0;
+    color: var(--accent-secondary);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .api-header .lead,
+  .api-page p {
     max-width: 70ch;
     margin: 0;
     color: var(--muted);
@@ -225,12 +114,7 @@ const valueBucket = createBucket("values", "Values", "value", childSections.get(
   }
 
   .notes p {
-    margin: 0;
-  }
-
-  .api-sections {
-    display: grid;
-    gap: 1.25rem;
+    color: var(--text);
   }
 
   .api-group {
@@ -243,8 +127,6 @@ const valueBucket = createBucket("values", "Values", "value", childSections.get(
   .api-group h2,
   .member-header h3 {
     margin: 0;
-    border: 0;
-    padding: 0;
     color: var(--text);
     line-height: 1.2;
   }
@@ -261,86 +143,12 @@ const valueBucket = createBucket("values", "Values", "value", childSections.get(
 
   .member-section {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.65rem;
     padding-top: 0.95rem;
     border-top: 1px solid var(--border);
   }
 
   .member-header h3 {
     font-size: 1.2rem;
-  }
-
-  .signature-list {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .signature {
-    margin: 0;
-    color: var(--accent-secondary);
-    font-size: 0.92rem;
-  }
-
-  .signature code {
-    display: inline-block;
-    max-width: 100%;
-    overflow-x: auto;
-    padding: 0.2rem 0.35rem;
-    background: var(--code-bg);
-    color: var(--code-text);
-  }
-
-  .api-page p {
-    margin: 0;
-    line-height: 1.65;
-  }
-
-  .api-page .lead {
-    color: var(--muted);
-  }
-
-  .api-page .member-section {
-    background: transparent;
-    border: 0;
-    padding: 0;
-  }
-
-  .api-page .api-section-header {
-    display: block;
-    margin: 0 0 0.6rem;
-  }
-
-  .api-page .api-section-header h2,
-  .api-page .api-section-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    border: 0;
-    padding: 0;
-    color: var(--text);
-  }
-
-  .api-page .api-group p,
-  .api-page .member-section p {
-    margin-top: 0.55rem;
-  }
-
-  .tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    list-style: none;
-    margin: 0.75rem 0 0;
-    padding: 0;
-  }
-
-  .tag-list li {
-    padding: 0.25rem 0.4rem;
-    border: 1px solid var(--border);
-    background: var(--surface-3);
-  }
-
-  .tag-list code {
-    color: var(--text);
-    font-size: 0.82rem;
   }
 </style>

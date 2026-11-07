@@ -34,7 +34,9 @@ export { collections } from "wima-docs-website-template/loaders";
 
 That keeps the host project on Astro's normal source layout. The integration injects the website routes, so there is no need to point `srcDir` at the package.
 
-The API docs route is generated from the host library's source files. By default it reads from `src/` and serves the docs at `/api`.
+The API docs route is generated with TypeDoc from the host library's source files. If the source directory contains an `index` entry point (`.js`, `.mjs`, `.cjs`, `.ts`, or `.tsx`), TypeDoc follows that public entry point; otherwise it documents the source files in the directory. By default it reads from `src/` and serves the docs at `/api`.
+
+The host project must provide TypeScript because TypeDoc uses the host project's `tsconfig.json` (or `.configs/tsconfig.lib.json` when present) to resolve JavaScript and JSDoc types.
 
 ## Expected Project Layout
 

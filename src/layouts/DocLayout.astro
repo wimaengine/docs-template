@@ -451,11 +451,7 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
         button.setAttribute("aria-expanded", open ? "true" : "false");
       });
 
-      const sidebar = document.getElementById("site-sidebar");
-      if (sidebar instanceof HTMLElement) {
-        const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
-        const section = pathname === "/" ? "/" : pathname.split("/")[1] || pathname;
-        const storageKey = `sidebar-scroll:${section}`;
+      const persistScrollPosition = (element, storageKey) => {
         let saveFrame = 0;
 
         const readScrollTop = () => {
@@ -469,7 +465,7 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
 
         const saveScrollTop = () => {
           try {
-            sessionStorage.setItem(storageKey, String(sidebar.scrollTop));
+            sessionStorage.setItem(storageKey, String(element.scrollTop));
           } catch {
             // Ignore storage failures.
           }
@@ -487,12 +483,24 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
 
         const storedScrollTop = readScrollTop();
         if (storedScrollTop !== null && Number.isFinite(storedScrollTop)) {
-          sidebar.scrollTop = storedScrollTop;
+          element.scrollTop = storedScrollTop;
         }
 
-        sidebar.addEventListener("scroll", scheduleSave, { passive: true });
+        element.addEventListener("scroll", scheduleSave, { passive: true });
         window.addEventListener("pagehide", saveScrollTop);
         window.addEventListener("beforeunload", saveScrollTop);
+      };
+
+      const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+      const section = pathname === "/" ? "/" : pathname.split("/")[1] || pathname;
+      const siteSidebar = document.getElementById("site-sidebar");
+      if (siteSidebar instanceof HTMLElement) {
+        persistScrollPosition(siteSidebar, `sidebar-scroll:${section}`);
+      }
+
+      const apiSidebar = document.querySelector('[data-scroll-zone="api-reference"]');
+      if (apiSidebar instanceof HTMLElement) {
+        persistScrollPosition(apiSidebar, "sidebar-scroll:api-reference");
       }
     </script>
   </body>

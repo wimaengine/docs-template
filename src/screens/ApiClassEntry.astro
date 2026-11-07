@@ -3,63 +3,32 @@ import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiSurface from "../components/ApiSurface.astro";
-import ApiCallableSection from "../components/ApiCallableSection.astro";
+import ApiReflection from "../components/ApiReflection.astro";
+import {
+  getReflectionDescriptionForDisplay,
+  getReflectionKindName,
+  getReflectionTagsForDisplay,
+  getVisibleReflectionChildren,
+  ReflectionKind
+} from "../utils/typedoc.js";
 
-interface ApiSection {
-  order: number;
-  parent?: string;
-  kind: string;
+interface TypeDocReflection {
+  id: number;
   name: string;
-  signature: string;
-  description: string;
-  tags: string[];
-  callable?: {
-    signature: string;
-    typeParameters: Array<{
-      name: string;
-      constraint?: string;
-      default?: string;
-      description: string;
-    }>;
-    parameters: Array<{
-      name: string;
-      type: string;
-      optional: boolean;
-      rest: boolean;
-      defaultValue: string;
-      description: string;
-    }>;
-    returns?: {
-      type: string;
-      description: string;
-    };
-  };
+  kind: number;
+  [key: string]: any;
 }
 
 interface ApiCollectionEntry {
   id: string;
-  data: {
-    title: string;
-    description: string;
-    filePath: string;
-    source: string;
-    sections: ApiSection[];
-  };
-}
-
-interface ApiSectionGroup {
-  order: number;
-  name: string;
-  items: ApiSection[];
-  description: string;
-  tags: string[];
+  data: TypeDocReflection;
 }
 
 interface MemberBucket {
   id: string;
   label: string;
-  groups: ApiSectionGroup[];
   kind: "constructor" | "properties" | "methods" | "additional";
+  items: TypeDocReflection[];
 }
 
 interface Props {
@@ -68,139 +37,53 @@ interface Props {
 }
 
 const { entry, groups } = Astro.props as Props;
-const sections = entry.data.sections;
-const topLevelSections = sections.filter((section) => !section.parent);
-const classSection = topLevelSections.find((section) => section.kind === "class") ?? null;
-const childSections = new Map<string, ApiSection[]>();
-
-for (const section of sections) {
-  if (!section.parent) {
-    continue;
-  }
-
-  if (!childSections.has(section.parent)) {
-    childSections.set(section.parent, []);
-  }
-
-  childSections.get(section.parent)?.push(section);
-}
-
-if (!classSection) {
-  throw new Error("ApiClassEntry requires a class section");
-}
-
-function splitParagraphs(value: string): string[] {
-  return value
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-}
-
-function groupId(group: ApiSectionGroup): string {
-  return `section-${group.order}`;
-}
-
-function buildSectionGroups(items: ApiSection[]): ApiSectionGroup[] {
-  const groups = new Map<string, ApiSectionGroup>();
-
-  for (const item of [...items].sort((a, b) => a.order - b.order)) {
-    const existing = groups.get(item.name);
-
-    if (!existing) {
-      groups.set(item.name, {
-        order: item.order,
-        name: item.name,
-        items: [item],
-        description: item.description,
-        tags: [...item.tags]
-      });
-      continue;
-    }
-
-    existing.items.push(item);
-    existing.order = Math.min(existing.order, item.order);
-
-    if (!existing.description && item.description) {
-      existing.description = item.description;
-    }
-
-    for (const tag of item.tags) {
-      if (!existing.tags.includes(tag)) {
-        existing.tags.push(tag);
-      }
-    }
-  }
-
-  return [...groups.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-}
-
-function shouldShowSignature(section: ApiSection, groupSize = 1): boolean {
-  if (section.kind === "class") {
-    return false;
-  }
-
-  return groupSize > 1 || section.signature !== section.name;
-}
+const reflection = entry.data;
+const members = getVisibleReflectionChildren(reflection);
+const description = getReflectionDescriptionForDisplay(reflection);
+const tags = getReflectionTagsForDisplay(reflection);
 
 function createBucket(
   id: MemberBucket["id"],
   label: string,
   kind: MemberBucket["kind"],
-  items: ApiSection[]
+  items: TypeDocReflection[]
 ): MemberBucket | null {
-  const groups = buildSectionGroups(items);
-  if (groups.length === 0) {
-    return null;
-  }
-
-  return {
-    id,
-    label,
-    kind,
-    groups
-  };
+  return items.length > 0 ? { id, label, kind, items } : null;
 }
 
-const classMembers = childSections.get(classSection.name) ?? [];
 const memberBuckets = [
-  createBucket(
-    "constructor",
-    "Constructor",
-    "constructor",
-    classMembers.filter((section) => section.kind === "constructor")
-  ),
+  createBucket("constructor", "Constructor", "constructor", members.filter((member) => member.kind === ReflectionKind.Constructor)),
   createBucket(
     "properties",
     "Properties",
     "properties",
-    classMembers.filter((section) => section.kind === "property" || section.kind === "getter" || section.kind === "setter")
+    members.filter((member) => member.kind === ReflectionKind.Property || member.kind === ReflectionKind.Accessor)
   ),
-  createBucket(
-    "methods",
-    "Methods",
-    "methods",
-    classMembers.filter((section) => section.kind === "method")
-  ),
+  createBucket("methods", "Methods", "methods", members.filter((member) => member.kind === ReflectionKind.Method)),
   createBucket(
     "additional",
     "Additional",
     "additional",
-    topLevelSections.filter((section) => section !== classSection)
+    members.filter((member) => ![
+      ReflectionKind.Constructor,
+      ReflectionKind.Property,
+      ReflectionKind.Accessor,
+      ReflectionKind.Method
+    ].includes(member.kind))
   )
 ].filter((bucket): bucket is MemberBucket => bucket !== null);
 ---
 
-<DocLayout title={`Class ${classSection.name} | ${rootPackageName}`} tabs={sidebarTabs}>
+<DocLayout title={`Class ${reflection.name} | ${rootPackageName}`} tabs={sidebarTabs}>
   <ApiSurface groups={groups} activeSlug={entry.id}>
     <div class="api-page">
       <header class="api-header">
-        <h1>Class {classSection.name}</h1>
-        <p class="lead">{classSection.description}</p>
-        {classSection.tags.length ? (
+        <p class="section-label">Class</p>
+        <h1>{reflection.name}</h1>
+        {description ? <p class="lead">{description}</p> : null}
+        {tags.length > 0 ? (
           <div class="notes">
-            {classSection.tags.map((tag) => (
-              <p><code>{tag}</code></p>
-            ))}
+            {tags.map((tag) => <p><code>{tag}</code></p>)}
           </div>
         ) : null}
       </header>
@@ -210,26 +93,15 @@ const memberBuckets = [
           <section class="api-group" id={bucket.id}>
             <h2>{bucket.label}</h2>
             <div class="member-list">
-              {bucket.groups.map((group) => (
-                <article class="member-section" id={groupId(group)}>
+              {bucket.items.map((member) => (
+                <article class="member-section" id={`member-${member.id}`}>
                   {bucket.kind === "constructor" ? null : (
                     <header class="member-header">
-                      <h3>{group.name}</h3>
+                      <h3>{member.name}</h3>
+                      <p class="member-kind">{getReflectionKindName(member.kind)}</p>
                     </header>
                   )}
-                  <div class="signature-list">
-                    {group.items.map((item) => (
-                      <ApiCallableSection section={item} showSignature={shouldShowSignature(item, group.items.length)} />
-                    ))}
-                  </div>
-                  {splitParagraphs(group.description).map((paragraph) => <p>{paragraph}</p>)}
-                  {group.tags.length > 0 ? (
-                    <ul class="tag-list">
-                      {group.tags.map((tag) => (
-                        <li><code>{tag}</code></li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  <ApiReflection reflection={member} />
                 </article>
               ))}
             </div>
@@ -261,7 +133,18 @@ const memberBuckets = [
     line-height: 1.05;
   }
 
-  .api-header .lead {
+  .section-label,
+  .member-kind {
+    margin: 0;
+    color: var(--accent-secondary);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .api-header .lead,
+  .api-page p {
     max-width: 70ch;
     margin: 0;
     color: var(--muted);
@@ -275,7 +158,7 @@ const memberBuckets = [
   }
 
   .notes p {
-    margin: 0;
+    color: var(--text);
   }
 
   .api-sections {
@@ -293,8 +176,6 @@ const memberBuckets = [
   .api-group h2,
   .member-header h3 {
     margin: 0;
-    border: 0;
-    padding: 0;
     color: var(--text);
     line-height: 1.2;
   }
@@ -311,42 +192,17 @@ const memberBuckets = [
 
   .member-section {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.65rem;
     padding-top: 0.95rem;
     border-top: 1px solid var(--border);
   }
 
+  .member-header {
+    display: grid;
+    gap: 0.25rem;
+  }
+
   .member-header h3 {
     font-size: 1.2rem;
-  }
-
-  .signature-list {
-    display: grid;
-    gap: 0.9rem;
-  }
-
-  .api-page p {
-    margin: 0;
-    line-height: 1.65;
-  }
-
-  .tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    list-style: none;
-    margin: 0.75rem 0 0;
-    padding: 0;
-  }
-
-  .tag-list li {
-    padding: 0.25rem 0.4rem;
-    border: 1px solid var(--border);
-    background: var(--surface-3);
-  }
-
-  .tag-list code {
-    color: var(--text);
-    font-size: 0.82rem;
   }
 </style>

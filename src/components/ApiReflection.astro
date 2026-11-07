@@ -1,0 +1,253 @@
+---
+import {
+  formatDefaultValue,
+  formatParameter,
+  formatReflectionSignature,
+  formatType,
+  getParameterDescription,
+  getReflectionDescription,
+  getReflectionSignatures,
+  getReflectionTags,
+  getReturnDescription,
+  getTypeParameters,
+  ReflectionKind,
+  splitParagraphs
+} from "../utils/typedoc.js";
+
+interface Props {
+  reflection: Record<string, any>;
+  showDescription?: boolean;
+  showSignature?: boolean;
+  showTags?: boolean;
+}
+
+const {
+  reflection,
+  showDescription = true,
+  showSignature = true,
+  showTags = true
+} = Astro.props as Props;
+
+const signatures = getReflectionSignatures(reflection);
+const entries = (signatures.length > 0 ? signatures : [null]).map((signature) => ({
+  signature,
+  text: formatReflectionSignature(reflection, signature),
+  description: getReflectionDescription(reflection, signature),
+  tags: getReflectionTags(reflection, signature),
+  typeParameters: getTypeParameters(signature ?? reflection),
+  parameters: signature?.parameters ?? [],
+  returnType: signature && reflection.kind !== ReflectionKind.Constructor ? formatType(signature.type) : "",
+  returnDescription: signature ? getReturnDescription(reflection, signature) : ""
+}));
+const defaultValue = formatDefaultValue(reflection.defaultValue);
+const shouldRender = showSignature || showDescription || showTags || Boolean(defaultValue) || entries.some((entry) => (
+  entry.typeParameters.length > 0 || entry.parameters.length > 0 || Boolean(entry.returnType)
+));
+---
+
+{shouldRender ? (
+  <article class="api-reflection">
+    {entries.map((entry) => (
+      <div class="api-reflection-entry">
+        {showSignature ? (
+          <p class="signature">
+            <code>{entry.text}</code>
+          </p>
+        ) : null}
+
+        {showDescription && entry.description ? (
+          <div class="reflection-description">
+            {splitParagraphs(entry.description).map((paragraph) => <p>{paragraph}</p>)}
+          </div>
+        ) : null}
+
+        {entry.typeParameters.length > 0 ? (
+          <section class="reflection-meta">
+            <h4>Type Parameters</h4>
+            <div class="reflection-list">
+              {entry.typeParameters.map((typeParameter) => (
+                <div class="reflection-item">
+                  <p class="reflection-item-name">
+                    <code>
+                      {typeParameter.name}
+                      {typeParameter.constraint ? ` extends ${typeParameter.constraint}` : ""}
+                      {typeParameter.defaultValue ? ` = ${typeParameter.defaultValue}` : ""}
+                    </code>
+                  </p>
+                  {typeParameter.description ? (
+                    <div class="reflection-item-description">
+                      {splitParagraphs(typeParameter.description).map((paragraph) => <p>{paragraph}</p>)}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {entry.parameters.length > 0 ? (
+          <section class="reflection-meta">
+            <h4>Parameters</h4>
+            <div class="reflection-list">
+              {entry.parameters.map((parameter) => (
+                <div class="reflection-item">
+                  <p class="reflection-item-name">
+                    {parameter.flags?.isRest ? <span class="reflection-flag">Rest</span> : parameter.flags?.isOptional ? <span class="reflection-flag">Optional</span> : null}
+                    <code>{formatParameter(parameter)}</code>
+                  </p>
+                  {getParameterDescription(parameter) ? (
+                    <div class="reflection-item-description">
+                      {splitParagraphs(getParameterDescription(parameter)).map((paragraph) => <p>{paragraph}</p>)}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {entry.returnType ? (
+          <section class="reflection-meta">
+            <h4>Returns</h4>
+            <div class="reflection-list">
+              <div class="reflection-item">
+                <p class="reflection-item-name"><code>{entry.returnType}</code></p>
+                {entry.returnDescription ? (
+                  <div class="reflection-item-description">
+                    {splitParagraphs(entry.returnDescription).map((paragraph) => <p>{paragraph}</p>)}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {defaultValue ? (
+          <p class="reflection-default">Default: <code>{defaultValue}</code></p>
+        ) : null}
+
+        {showTags && entry.tags.length > 0 ? (
+          <ul class="tag-list">
+            {entry.tags.map((tag) => <li><code>{tag}</code></li>)}
+          </ul>
+        ) : null}
+      </div>
+    ))}
+  </article>
+) : null}
+
+<style>
+  .api-reflection {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .api-reflection-entry {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .api-reflection-entry + .api-reflection-entry {
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .signature {
+    margin: 0;
+    color: var(--accent-secondary);
+    font-size: 0.92rem;
+  }
+
+  .signature code {
+    display: inline-block;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0.2rem 0.35rem;
+    background: var(--code-bg);
+    color: var(--code-text);
+  }
+
+  .reflection-description,
+  .reflection-item-description {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .reflection-description p,
+  .reflection-item-description p,
+  .reflection-default {
+    margin: 0;
+  }
+
+  .reflection-meta {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .reflection-meta h4 {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .reflection-list {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .reflection-item {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .reflection-item-name {
+    margin: 0;
+    color: var(--text);
+    line-height: 1.55;
+  }
+
+  .reflection-item-name code,
+  .reflection-default code {
+    display: inline-block;
+    padding: 0.12rem 0.3rem;
+    background: var(--code-bg);
+    color: var(--code-text);
+  }
+
+  .reflection-flag {
+    display: inline-block;
+    margin-right: 0.45rem;
+    padding: 0.12rem 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--accent-secondary);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    list-style: none;
+    margin: 0.2rem 0 0;
+    padding: 0;
+  }
+
+  .tag-list li {
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--border);
+    background: var(--surface-3);
+  }
+
+  .tag-list code {
+    color: var(--text);
+    font-size: 0.82rem;
+  }
+</style>
