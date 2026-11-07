@@ -51,6 +51,17 @@ function createBucket(
   return items.length > 0 ? { id, label, kind, items } : null;
 }
 
+function getMemberModifiers(member: TypeDocReflection): string[] {
+  const flags = member.flags ?? {};
+
+  return [
+    flags.isStatic ? "static" : null,
+    flags.isAbstract ? "abstract" : null,
+    flags.isReadonly ? "readonly" : null,
+    flags.isOptional ? "optional" : null
+  ].filter((modifier): modifier is string => modifier !== null);
+}
+
 const memberBuckets = [
   createBucket("constructor", "Constructor", "constructor", members.filter((member) => member.kind === ReflectionKind.Constructor)),
   createBucket(
@@ -100,8 +111,15 @@ const memberBuckets = [
                 <article class="member-section" id={`member-${member.id}`}>
                   {bucket.kind === "constructor" ? null : (
                     <header class="member-header">
-                      <h3>{member.name}</h3>
-                      <p class="member-kind">{getReflectionKindName(member.kind)}</p>
+                      <h3>
+                        {getMemberModifiers(member).map((modifier) => (
+                          <span class="member-modifier">{modifier}</span>
+                        ))}
+                        <span>{member.name}</span>
+                      </h3>
+                      {bucket.kind === "properties" ? null : (
+                        <p class="member-kind">{getReflectionKindName(member.kind)}</p>
+                      )}
                     </header>
                   )}
                   <ApiReflection reflection={member} />
@@ -233,6 +251,18 @@ const memberBuckets = [
   }
 
   .member-header h3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.55rem;
     font-size: 1.2rem;
+  }
+
+  .member-modifier {
+    color: var(--accent-secondary);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 </style>
