@@ -124,7 +124,12 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
             return (
               <li>
                 <a class="api-member-index-link" href={`#member-${member.id}`}>
-                  <span class="api-member-index-badge" title={badge.name}>{badge.letter}</span>
+                  <span
+                    class={`api-member-index-badge is-${badge.letter.toLowerCase()}`}
+                    title={badge.name}
+                  >
+                    {badge.letter}
+                  </span>
                   <span class="api-member-index-name">{getIndexName(member)}</span>
                 </a>
               </li>
@@ -213,6 +218,30 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
     font-size: 0.72rem;
     font-weight: 800;
     line-height: 1;
+  }
+
+  .api-member-index-badge.is-c {
+    border-color: rgba(244, 114, 182, 0.65);
+    background: rgba(244, 114, 182, 0.14);
+    color: #f9a8d4;
+  }
+
+  .api-member-index-badge.is-p {
+    border-color: rgba(134, 239, 172, 0.6);
+    background: rgba(134, 239, 172, 0.12);
+    color: #86efac;
+  }
+
+  .api-member-index-badge.is-m {
+    border-color: rgba(125, 211, 252, 0.6);
+    background: rgba(125, 211, 252, 0.12);
+    color: #7dd3fc;
+  }
+
+  .api-member-index-badge.is-f {
+    border-color: rgba(252, 211, 77, 0.6);
+    background: rgba(252, 211, 77, 0.12);
+    color: #fcd34d;
   }
 
   .api-member-index-name {
