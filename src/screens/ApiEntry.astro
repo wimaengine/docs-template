@@ -2,6 +2,8 @@
 import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
+import ApiDeclaration from "../components/ApiDeclaration.astro";
+import ApiMemberGroups from "../components/ApiMemberGroups.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import ApiReflection from "../components/ApiReflection.astro";
 import ApiSignature from "../components/ApiSignature.astro";
@@ -44,10 +46,6 @@ const description = getReflectionDescriptionForDisplay(reflection);
 const tags = getReflectionTagsForDisplay(reflection);
 const children = getVisibleReflectionChildren(reflection);
 const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
-
-function isCallable(reflection: TypeDocReflection): boolean {
-  return [ReflectionKind.Function, ReflectionKind.Method, ReflectionKind.Constructor].includes(reflection.kind);
-}
 ---
 
 <DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs}>
@@ -58,6 +56,8 @@ function isCallable(reflection: TypeDocReflection): boolean {
         <h1>{reflection.name}</h1>
         {reflection.kind === ReflectionKind.Function ? (
           <ApiSignature reflection={reflection} typeLinks={typeLinks} />
+        ) : [ReflectionKind.Variable, ReflectionKind.TypeAlias].includes(reflection.kind) ? (
+          <ApiDeclaration reflection={reflection} typeLinks={typeLinks} />
         ) : null}
         {description ? <p class="lead">{description}</p> : null}
         {tags.length > 0 ? (
@@ -71,30 +71,7 @@ function isCallable(reflection: TypeDocReflection): boolean {
         <ApiReflection reflection={reflection} showDescription={false} showTags={false} typeLinks={typeLinks} />
       </section>
 
-      {children.length > 0 ? (
-        <section class="api-group">
-          <h2>Members</h2>
-          <div class="member-list">
-            {children.map((child) => (
-              <article class="member-section" id={`member-${child.id}`}>
-                <header class="member-header">
-                  <h3>
-                    {isCallable(child) ? (
-                      <ApiSignature
-                        reflection={child}
-                        name={child.kind === ReflectionKind.Constructor ? "constructor" : child.name}
-                        typeLinks={typeLinks}
-                      />
-                    ) : child.name}
-                  </h3>
-                  <p class="member-kind">{getReflectionKindName(child.kind)}</p>
-                </header>
-                <ApiReflection reflection={child} typeLinks={typeLinks} />
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {children.length > 0 ? <ApiMemberGroups members={children} typeLinks={typeLinks} /> : null}
     </div>
   </ApiSurface>
 </DocLayout>
@@ -141,6 +118,10 @@ function isCallable(reflection: TypeDocReflection): boolean {
     margin: 0;
   }
 
+  .api-header > .api-declaration {
+    margin: 0;
+  }
+
   .notes {
     display: grid;
     gap: 0.4rem;
@@ -163,35 +144,4 @@ function isCallable(reflection: TypeDocReflection): boolean {
     padding-top: 0;
   }
 
-  .api-group h2,
-  .member-header h3 {
-    margin: 0;
-    color: var(--text);
-    line-height: 1.2;
-  }
-
-  .api-group h2 {
-    font-size: 1.1rem;
-    font-weight: 700;
-  }
-
-  .member-list {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .member-section {
-    display: grid;
-    gap: 0.65rem;
-    padding-top: 0.95rem;
-  }
-
-  .member-header {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .member-header h3 {
-    font-size: 1.2rem;
-  }
 </style>

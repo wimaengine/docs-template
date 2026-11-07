@@ -15,12 +15,16 @@ interface ApiTypeLink {
 interface Props {
   reflection: Record<string, any>;
   name?: string;
+  namePrefix?: string;
+  showName?: boolean;
   typeLinks?: ApiTypeLink[];
 }
 
 const {
   reflection,
   name,
+  namePrefix = "",
+  showName = true,
   typeLinks = []
 } = Astro.props as Props;
 
@@ -39,7 +43,7 @@ function getParameterName(parameter: Record<string, any>): string {
 ---
 
 <code class="api-signature">
-  <span class="api-signature-name">{displayName}</span>
+  {showName ? <span class="api-signature-name">{namePrefix}{displayName}</span> : namePrefix ? <span class="api-signature-name">{namePrefix}</span> : null}
   {typeParameters.length > 0 ? (
     <>
       {"<"}

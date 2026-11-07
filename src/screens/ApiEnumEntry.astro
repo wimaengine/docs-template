@@ -58,8 +58,11 @@ const members = getVisibleReflectionChildren(reflection)
       </header>
 
       {members.length > 0 ? (
-        <section class="api-group">
-          <h2>Values</h2>
+        <details class="api-group" id="values" open>
+          <summary class="api-group-summary">
+            <span class="api-group-title" role="heading" aria-level="2">Values</span>
+            <span class="api-group-toggle" aria-hidden="true">›</span>
+          </summary>
           <div class="member-list">
             {members.map((member) => (
               <article class="member-section" id={`member-${member.id}`}>
@@ -70,7 +73,7 @@ const members = getVisibleReflectionChildren(reflection)
               </article>
             ))}
           </div>
-        </section>
+        </details>
       ) : null}
     </div>
   </ApiSurface>
@@ -129,16 +132,46 @@ const members = getVisibleReflectionChildren(reflection)
     padding-top: 1rem;
   }
 
-  .api-group h2,
+  .api-group-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .api-group-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .api-group-summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  .api-group-title,
   .member-header h3 {
     margin: 0;
     color: var(--text);
     line-height: 1.2;
   }
 
-  .api-group h2 {
+  .api-group-title {
     font-size: 1.1rem;
     font-weight: 700;
+  }
+
+  .api-group-toggle {
+    flex: 0 0 auto;
+    color: var(--accent-secondary);
+    font-size: 1.35rem;
+    line-height: 1;
+    transition: transform 160ms ease;
+  }
+
+  .api-group[open] .api-group-toggle {
+    transform: rotate(90deg);
   }
 
   .member-list {

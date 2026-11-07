@@ -1,0 +1,60 @@
+---
+import { getTypeParameters, ReflectionKind } from "../utils/typedoc.js";
+import ApiType from "./ApiType.astro";
+
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface Props {
+  reflection: Record<string, any>;
+  typeLinks?: ApiTypeLink[];
+}
+
+const { reflection, typeLinks = [] } = Astro.props as Props;
+const typeParameters = getTypeParameters(reflection);
+const isTypeAlias = reflection.kind === ReflectionKind.TypeAlias;
+const type = reflection.type ?? "unknown";
+---
+
+<code class="api-declaration">
+  {isTypeAlias ? "type " : null}{reflection.name}
+  {typeParameters.length > 0 ? (
+    <>
+      {"<"}
+      {typeParameters.map((typeParameter, index) => (
+        <>
+          {index > 0 ? ", " : null}
+          {typeParameter.name}
+          {typeParameter.constraint ? (
+            <>
+              {" extends "}
+              <ApiType type={typeParameter.type} links={typeLinks} />
+            </>
+          ) : null}
+          {typeParameter.defaultValue ? (
+            <>
+              {" = "}
+              <ApiType type={typeParameter.default} links={typeLinks} />
+            </>
+          ) : null}
+        </>
+      ))}
+      {">"}
+    </>
+  ) : null}
+  {isTypeAlias ? " = " : ": "}
+  <ApiType type={type} links={typeLinks} />
+</code>
+
+<style>
+  .api-declaration {
+    display: block;
+    color: var(--code-text);
+    font: inherit;
+    font-weight: 600;
+    white-space: normal;
+  }
+</style>

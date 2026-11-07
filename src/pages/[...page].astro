@@ -132,7 +132,7 @@ export async function getStaticPaths() {
     ...apiEntriesForPaths.map((entry) => ({
       params: { page: routeToParam(getApiRoutePath(entry.id)) },
       props: {
-        kind: entry.data.kind === ReflectionKind.Class
+        kind: entry.data.kind === ReflectionKind.Class || entry.data.kind === ReflectionKind.Interface
           ? "api-class-entry"
           : entry.data.kind === ReflectionKind.Enum
             ? "api-enum-entry"

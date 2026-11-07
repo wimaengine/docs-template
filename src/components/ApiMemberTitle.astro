@@ -1,0 +1,85 @@
+---
+import {
+  getReflectionSignatures,
+  ReflectionKind
+} from "../utils/typedoc.js";
+import ApiSignature from "./ApiSignature.astro";
+import ApiType from "./ApiType.astro";
+
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface Props {
+  reflection: Record<string, any>;
+  name?: string;
+  typeLinks?: ApiTypeLink[];
+}
+
+const {
+  reflection,
+  name,
+  typeLinks = []
+} = Astro.props as Props;
+
+const callableKinds = [
+  ReflectionKind.Function,
+  ReflectionKind.Method,
+  ReflectionKind.Constructor,
+  ReflectionKind.CallSignature,
+  ReflectionKind.ConstructorSignature
+];
+const isCallable = callableKinds.includes(reflection.kind);
+const hidesName = [ReflectionKind.CallSignature, ReflectionKind.ConstructorSignature].includes(reflection.kind);
+const displayName = name ?? (reflection.kind === ReflectionKind.Constructor ? "constructor" : reflection.name ?? "member");
+const memberType = reflection.type ?? getReflectionSignatures(reflection)[0]?.type;
+const modifiers = [
+  reflection.flags?.isStatic ? "static" : null,
+  reflection.flags?.isAbstract ? "abstract" : null,
+  reflection.flags?.isReadonly ? "readonly" : null,
+  reflection.flags?.isOptional ? "optional" : null
+].filter((modifier): modifier is string => modifier !== null);
+---
+
+{modifiers.map((modifier) => <span class="member-modifier">[{modifier}]</span>)}
+{isCallable ? (
+  <ApiSignature
+    reflection={reflection}
+    name={displayName}
+    showName={!hidesName}
+    namePrefix={reflection.kind === ReflectionKind.ConstructorSignature ? "new " : ""}
+    typeLinks={typeLinks}
+  />
+) : (
+  <>
+    <span class="member-name">{displayName}</span>
+    {memberType ? <span class="member-type">: <ApiType type={memberType} links={typeLinks} /></span> : null}
+  </>
+)}
+
+<style>
+  .member-modifier {
+    display: inline-block;
+    margin-right: 0.35rem;
+    color: var(--accent-secondary);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    vertical-align: baseline;
+  }
+
+  .member-name {
+    color: var(--text);
+  }
+
+  .member-type {
+    display: inline-block;
+    color: var(--muted);
+    font-size: 0.92rem;
+    font-weight: 600;
+    vertical-align: baseline;
+  }
+</style>

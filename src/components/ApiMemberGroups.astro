@@ -1,0 +1,205 @@
+---
+import ApiMemberTitle from "./ApiMemberTitle.astro";
+import ApiReflection from "./ApiReflection.astro";
+import {
+  getReflectionKindName,
+  ReflectionKind
+} from "../utils/typedoc.js";
+
+interface TypeDocReflection {
+  id: number;
+  name: string;
+  kind: number;
+  [key: string]: any;
+}
+
+interface ApiTypeLink {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface MemberBucket {
+  id: string;
+  label: string;
+  kind: "constructor" | "properties" | "methods" | "functions" | "additional";
+  items: TypeDocReflection[];
+}
+
+interface Props {
+  members: TypeDocReflection[];
+  typeLinks?: ApiTypeLink[];
+}
+
+const { members, typeLinks = [] } = Astro.props as Props;
+
+function createBucket(
+  id: MemberBucket["id"],
+  label: string,
+  kind: MemberBucket["kind"],
+  items: TypeDocReflection[]
+): MemberBucket | null {
+  return items.length > 0 ? { id, label, kind, items } : null;
+}
+
+const memberBuckets = [
+  createBucket("constructor", "Constructor", "constructor", members.filter((member) => member.kind === ReflectionKind.Constructor)),
+  createBucket(
+    "properties",
+    "Properties",
+    "properties",
+    members.filter((member) => member.kind === ReflectionKind.Property || member.kind === ReflectionKind.Accessor)
+  ),
+  createBucket("methods", "Methods", "methods", members.filter((member) => member.kind === ReflectionKind.Method)),
+  createBucket(
+    "functions",
+    "Functions",
+    "functions",
+    members.filter((member) => [
+      ReflectionKind.Function,
+      ReflectionKind.CallSignature,
+      ReflectionKind.ConstructorSignature
+    ].includes(member.kind))
+  ),
+  createBucket(
+    "additional",
+    "Additional",
+    "additional",
+    members.filter((member) => ![
+      ReflectionKind.Constructor,
+      ReflectionKind.Property,
+      ReflectionKind.Accessor,
+      ReflectionKind.Method,
+      ReflectionKind.Function,
+      ReflectionKind.CallSignature,
+      ReflectionKind.ConstructorSignature
+    ].includes(member.kind))
+  )
+].filter((bucket): bucket is MemberBucket => bucket !== null);
+
+function shouldShowMemberKind(member: TypeDocReflection): boolean {
+  return ![
+    ReflectionKind.Constructor,
+    ReflectionKind.Property,
+    ReflectionKind.Accessor,
+    ReflectionKind.Method,
+    ReflectionKind.Function,
+    ReflectionKind.CallSignature,
+    ReflectionKind.ConstructorSignature
+  ].includes(member.kind);
+}
+---
+
+<div class="api-sections">
+  {memberBuckets.map((bucket) => (
+    <details class="api-group" id={bucket.id} open>
+      <summary class="api-group-summary">
+        <span class="api-group-title" role="heading" aria-level="2">{bucket.label}</span>
+        <span class="api-group-toggle" aria-hidden="true">›</span>
+      </summary>
+      <div class="member-list">
+        {bucket.items.map((member) => (
+          <article class="member-section" id={`member-${member.id}`}>
+            <header class="member-header">
+              <h3>
+                <ApiMemberTitle
+                  reflection={member}
+                  name={bucket.kind === "constructor" ? "constructor" : undefined}
+                  typeLinks={typeLinks}
+                />
+              </h3>
+              {shouldShowMemberKind(member) ? (
+                <p class="member-kind">{getReflectionKindName(member.kind)}</p>
+              ) : null}
+            </header>
+            <ApiReflection reflection={member} typeLinks={typeLinks} />
+          </article>
+        ))}
+      </div>
+    </details>
+  ))}
+</div>
+
+<style>
+  .api-sections {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .api-group {
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 1rem;
+  }
+
+  .api-group-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .api-group-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .api-group-summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  .api-group-title,
+  .member-header h3 {
+    margin: 0;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .api-group-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .api-group-toggle {
+    flex: 0 0 auto;
+    color: var(--accent-secondary);
+    font-size: 1.35rem;
+    line-height: 1;
+    transition: transform 160ms ease;
+  }
+
+  .api-group[open] .api-group-toggle {
+    transform: rotate(90deg);
+  }
+
+  .member-list {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .member-section {
+    display: grid;
+    gap: 0.65rem;
+    padding-top: 0.95rem;
+  }
+
+  .member-header {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .member-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .member-kind {
+    margin: 0;
+    color: var(--accent-secondary);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+</style>
