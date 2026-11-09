@@ -11,7 +11,33 @@ const defaultWebsiteConfig = Object.freeze({
   introContentPath: "README.md"
 });
 
-let websiteConfig = resolveWebsiteConfig();
+const websiteConfigEnvironmentKey = "ASTRO_DOCS_WEBSITE_CONFIG";
+
+function readEnvironmentWebsiteConfig() {
+  if (typeof process === "undefined") {
+    return null;
+  }
+
+  const raw = process.env[websiteConfigEnvironmentKey];
+
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(raw);
+
+    if (payload?.root !== projectRootDir || !payload.config || typeof payload.config !== "object") {
+      return null;
+    }
+
+    return resolveWebsiteConfig(payload.config);
+  } catch {
+    return null;
+  }
+}
+
+let websiteConfig = readEnvironmentWebsiteConfig() ?? resolveWebsiteConfig();
 
 function normalizeRoutePath(value, fallback) {
   const raw = typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
@@ -99,40 +125,52 @@ function rewriteSiteRoute(value) {
 }
 
 function getWebsiteConfig() {
+  // Astro evaluates astro.config.* and src/content.config.* in separate
+  // module contexts. Re-read the integration config through the process
+  // environment so both contexts observe the same paths.
+  websiteConfig = readEnvironmentWebsiteConfig() ?? websiteConfig;
   return websiteConfig;
 }
 
 function setWebsiteConfig(options = {}) {
   websiteConfig = resolveWebsiteConfig(options);
+
+  if (typeof process !== "undefined") {
+    process.env[websiteConfigEnvironmentKey] = JSON.stringify({
+      root: projectRootDir,
+      config: websiteConfig
+    });
+  }
+
   return websiteConfig;
 }
 
 function getGuideRoutePath(...segments) {
-  return joinRoutePath(websiteConfig.guideRoute, ...segments);
+  return joinRoutePath(getWebsiteConfig().guideRoute, ...segments);
 }
 
 function getExamplesRoutePath(...segments) {
-  return joinRoutePath(websiteConfig.examplesRoute, ...segments);
+  return joinRoutePath(getWebsiteConfig().examplesRoute, ...segments);
 }
 
 function getApiRoutePath(...segments) {
-  return joinRoutePath(websiteConfig.apiRoute, ...segments);
+  return joinRoutePath(getWebsiteConfig().apiRoute, ...segments);
 }
 
 function getGuideContentDir() {
-  return websiteConfig.guideContentDir;
+  return getWebsiteConfig().guideContentDir;
 }
 
 function getExamplesContentDir() {
-  return websiteConfig.examplesContentDir;
+  return getWebsiteConfig().examplesContentDir;
 }
 
 function getApiSourceDir() {
-  return websiteConfig.apiSourceDir;
+  return getWebsiteConfig().apiSourceDir;
 }
 
 function getIntroContentPath() {
-  return websiteConfig.introContentPath;
+  return getWebsiteConfig().introContentPath;
 }
 
 export {

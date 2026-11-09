@@ -6,10 +6,6 @@ import path from "node:path";
 import { projectRootDir } from "./config/project.js";
 import { getApiSourceDir, getExamplesContentDir, getGuideContentDir, getIntroContentPath } from "./config/site.js";
 
-const examplesRoot = getExamplesContentDir();
-const guideRoot = getGuideContentDir();
-const apiRoot = getApiSourceDir();
-const introRoot = getIntroContentPath();
 const apiSourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const supportedApiKinds = new Set([
   ReflectionKind.Class,
@@ -30,6 +26,24 @@ function toTitle(value) {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function createDeferredGlobLoader({ getBase, getPattern }) {
+  return {
+    name: "glob-loader",
+    async load(context) {
+      // The integration sets the host project's content paths while Astro
+      // evaluates astro.config.*. Resolve them only when Astro runs the
+      // loader, because content.config.* can be evaluated first.
+      const loader = glob({
+        pattern: getPattern(),
+        base: getBase(),
+        deferRender: true
+      });
+
+      await loader.load(context);
+    }
+  };
 }
 
 async function collectExampleFiles(dir, root) {
@@ -183,7 +197,7 @@ function collectTopLevelReflections(reflections, output = []) {
   return output;
 }
 
-function resolveReflectionSourcePath(reflection, sourceFiles) {
+function resolveReflectionSourcePath(reflection, sourceFiles, apiRoot) {
   const source = reflection.sources?.find((item) => typeof item.fileName === "string");
 
   if (!source) {
@@ -192,6 +206,11 @@ function resolveReflectionSourcePath(reflection, sourceFiles) {
 
   const sourceName = source.fileName.split(path.sep).join("/");
   const normalizedAbsoluteName = path.isAbsolute(sourceName) ? path.normalize(sourceName) : null;
+  const pathMatches = (left, right) => (
+    left === right ||
+    left.endsWith(`/${right}`) ||
+    right.endsWith(`/${left}`)
+  );
 
   for (const filePath of sourceFiles) {
     const relativeToApi = path.relative(apiRoot, filePath).split(path.sep).join("/");
@@ -199,9 +218,8 @@ function resolveReflectionSourcePath(reflection, sourceFiles) {
 
     if (
       (normalizedAbsoluteName && path.normalize(filePath) === normalizedAbsoluteName) ||
-      relativeToApi === sourceName ||
-      relativeToProject === sourceName ||
-      relativeToApi.endsWith("/" + sourceName)
+      pathMatches(relativeToApi, sourceName) ||
+      pathMatches(relativeToProject, sourceName)
     ) {
       return filePath;
     }
@@ -288,6 +306,7 @@ async function createApiProject(entryPoints) {
 }
 
 async function loadApiEntries() {
+  const apiRoot = getApiSourceDir();
   const relativePaths = (await collectSourceFiles(apiRoot, apiRoot))
     .map((relativePath) => relativePath.split(path.sep).join("/"))
     .sort((a, b) => a.localeCompare(b));
@@ -314,7 +333,7 @@ async function loadApiEntries() {
   const entries = new Map();
 
   for (const reflection of reflections) {
-    const filePath = resolveReflectionSourcePath(reflection, sourceFiles);
+    const filePath = resolveReflectionSourcePath(reflection, sourceFiles, apiRoot);
 
     if (!filePath) {
       continue;
@@ -339,6 +358,8 @@ const examples = defineCollection({
   loader: {
     name: "examples-loader",
     async load({ store, parseData, watcher, logger, meta, generateDigest }) {
+      const examplesRoot = getExamplesContentDir();
+
       await syncExampleEntries({
         examplesRoot,
         parseData,
@@ -420,10 +441,9 @@ const api = defineCollection({
 });
 
 const guide = defineCollection({
-  loader: glob({
-    pattern: "**/*.md",
-    base: guideRoot,
-    deferRender: true
+  loader: createDeferredGlobLoader({
+    getBase: getGuideContentDir,
+    getPattern: () => "**/*.md"
   }),
   schema: z.object({
     title: z.string()
@@ -431,10 +451,9 @@ const guide = defineCollection({
 });
 
 const intro = defineCollection({
-  loader: glob({
-    pattern: path.basename(introRoot),
-    base: path.dirname(introRoot),
-    deferRender: true
+  loader: createDeferredGlobLoader({
+    getBase: () => path.dirname(getIntroContentPath()),
+    getPattern: () => path.basename(getIntroContentPath())
   }),
   schema: z.object({
     title: z.string().optional()
