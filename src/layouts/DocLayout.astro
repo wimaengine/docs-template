@@ -1,14 +1,25 @@
 ---
 import SidebarNav from "@components/SidebarNav.astro";
+import PageOutline from "@components/PageOutline.astro";
 import { rootPackageName } from "@configs/project.js";
 import type { NavTab } from "@configs/navigation";
+
+interface HeadingLike {
+  depth: number;
+  slug: string;
+  text: string;
+}
 
 interface Props {
   title?: string;
   tabs?: NavTab[];
+  headings?: HeadingLike[];
+  rightPanel?: "api";
 }
 
-const { title = rootPackageName, tabs = [] } = Astro.props;
+const { title = rootPackageName, tabs = [], headings = [], rightPanel } = Astro.props as Props;
+const hasPageOutline = headings.some((heading) => heading.depth > 1);
+const hasApiPanel = rightPanel === "api";
 ---
 
 <!doctype html>
@@ -92,6 +103,9 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
         --accent-secondary: #cbeafe;
         --code-bg: #090d13;
         --code-text: #f3f4f6;
+        --site-sidebar-width: 260px;
+        --page-outline-width: 230px;
+        --api-sidebar-width: 17.5rem;
       }
 
       * {
@@ -103,10 +117,12 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
         font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
         color: var(--text);
         background: var(--bg);
+        overflow: hidden;
       }
 
       .shell {
-        min-height: 100vh;
+        height: 100vh;
+        overflow: hidden;
       }
 
       .menu-toggle {
@@ -135,12 +151,12 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
         border-radius: 0;
       }
 
-      aside {
+      #site-sidebar {
         position: fixed;
         top: 0;
         left: 0;
         height: 100vh;
-        width: 260px;
+        width: var(--site-sidebar-width);
         padding: 1.25rem 1rem;
         background: var(--panel);
         border: 1px solid var(--border);
@@ -259,13 +275,25 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
       }
 
       main {
-        min-height: 100vh;
-        margin: 0 0 0 260px;
+        height: 100vh;
+        min-height: 0;
+        margin: 0 0 0 var(--site-sidebar-width);
         padding: 2rem;
         background: transparent;
         border: 0;
         border-radius: 0;
         box-shadow: none;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+      }
+
+      .shell.has-page-outline main {
+        margin-right: var(--page-outline-width);
+      }
+
+      .shell.has-api-panel main {
+        margin-right: var(--api-sidebar-width);
       }
 
       h1,
@@ -381,14 +409,14 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
           display: inline-flex;
         }
 
-        aside {
+        #site-sidebar {
           transform: translateX(-100%);
           transition: transform 180ms ease;
           box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
           border-radius: 0;
         }
 
-        body.menu-open aside {
+        body.menu-open #site-sidebar {
           transform: translateX(0);
         }
 
@@ -409,14 +437,28 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
         }
 
         main {
-          margin: 4.8rem 0 0;
-          min-height: calc(100vh - 4.8rem);
+          margin: 0;
+          padding: 4.8rem 2rem 2rem;
+        }
+      }
+
+      @media (max-width: 1100px) {
+        .shell.has-page-outline main,
+        .shell.has-api-panel main {
+          margin-right: 0;
+          padding-right: 2rem;
         }
       }
     </style>
   </head>
   <body>
-    <div class="shell">
+    <div
+      class:list={[
+        "shell",
+        hasPageOutline && "has-page-outline",
+        hasApiPanel && "has-api-panel"
+      ]}
+    >
       <button
         class="menu-toggle"
         id="menu-toggle"
@@ -434,9 +476,11 @@ const { title = rootPackageName, tabs = [] } = Astro.props;
         {tabs.length > 0 && <SidebarNav tabs={tabs} />}
         <slot name="sidebar" />
       </aside>
+      {hasPageOutline && <PageOutline headings={headings} />}
       <main>
         <slot />
       </main>
+      {hasApiPanel && <slot name="right-panel" />}
     </div>
     <script>
       const button = document.getElementById("menu-toggle");

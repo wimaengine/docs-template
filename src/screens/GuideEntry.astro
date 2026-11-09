@@ -15,9 +15,9 @@ interface Props {
 }
 
 const { entry } = Astro.props as Props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
 ---
 
-<DocLayout title={`${entry.data.title} | ${rootPackageName}`} tabs={sidebarTabs}>
+<DocLayout title={`${entry.data.title} | ${rootPackageName}`} tabs={sidebarTabs} headings={headings}>
   <Content />
 </DocLayout>

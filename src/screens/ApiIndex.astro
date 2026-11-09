@@ -2,6 +2,7 @@
 import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
+import ApiReferenceSidebar from "../components/ApiReferenceSidebar.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 
 interface ApiModuleSummary {
@@ -16,6 +17,7 @@ interface Props {
 const { groups } = Astro.props as Props;
 ---
 
-<DocLayout title={`API | ${rootPackageName}`} tabs={sidebarTabs}>
-  <ApiSurface groups={groups} blank />
+<DocLayout title={`API | ${rootPackageName}`} tabs={sidebarTabs} rightPanel="api">
+  <ApiSurface blank />
+  <ApiReferenceSidebar slot="right-panel" groups={groups} />
 </DocLayout>

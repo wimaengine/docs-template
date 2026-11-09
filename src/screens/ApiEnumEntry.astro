@@ -2,8 +2,9 @@
 import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
-import ApiSurface from "../components/ApiSurface.astro";
 import ApiReflection from "../components/ApiReflection.astro";
+import ApiReferenceSidebar from "../components/ApiReferenceSidebar.astro";
+import ApiSurface from "../components/ApiSurface.astro";
 import {
   getReflectionDescriptionForDisplay,
   getReflectionTagsForDisplay,
@@ -43,8 +44,8 @@ const members = getVisibleReflectionChildren(reflection)
   .filter((member) => member.kind === ReflectionKind.EnumMember);
 ---
 
-<DocLayout title={`Enum ${reflection.name} | ${rootPackageName}`} tabs={sidebarTabs}>
-  <ApiSurface groups={groups} activeSlug={entry.id}>
+<DocLayout title={`Enum ${reflection.name} | ${rootPackageName}`} tabs={sidebarTabs} rightPanel="api">
+  <ApiSurface>
     <div class="api-page">
       <header class="api-header">
         <p class="section-label">Enum</p>
@@ -78,6 +79,7 @@ const members = getVisibleReflectionChildren(reflection)
       ) : null}
     </div>
   </ApiSurface>
+  <ApiReferenceSidebar slot="right-panel" groups={groups} activeSlug={entry.id} />
 </DocLayout>
 
 <style>

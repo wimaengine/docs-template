@@ -19,9 +19,9 @@ if (!introEntry) {
   throw new Error("Missing introduction entry");
 }
 
-const { Content } = await render(introEntry);
+const { Content, headings } = await render(introEntry);
 ---
 
-<DocLayout title={rootPackageName} tabs={sidebarTabs}>
+<DocLayout title={rootPackageName} tabs={sidebarTabs} headings={headings}>
   <Content />
 </DocLayout>

@@ -1,17 +1,11 @@
-import { getCollection, render } from "astro:content";
+import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
+import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
 
 export interface NavTab {
   label: string;
   href?: string;
   children?: NavTab[];
-}
-
-interface HeadingLike {
-  depth: number;
-  slug: string;
-  text: string;
 }
 
 interface GuideCollectionEntry {
@@ -43,91 +37,8 @@ interface OrderedGuideEntry {
   route: string;
 }
 
-interface NavNode extends NavTab {
-  depth: number;
-  children: NavNode[];
-}
-
 function cleanLabel(value: string): string {
   return value.replace(/^\s*\d+[.)-]?\s+/, "").trim();
-}
-
-function getPageLabel(headings: HeadingLike[], preferredDepth: number, fallback: string): string {
-  const preferredHeading = headings.find((heading) => heading.depth === preferredDepth);
-  const fallbackHeading = headings[0];
-  return cleanLabel(preferredHeading?.text ?? fallbackHeading?.text ?? fallback);
-}
-
-function toNavTab(node: NavNode): NavTab {
-  const children = node.children.map(toNavTab);
-
-  return children.length > 0
-    ? {
-        label: node.label,
-        href: node.href,
-        children
-      }
-    : {
-        label: node.label,
-        href: node.href
-      };
-}
-
-function buildHeadingTree(headings: HeadingLike[], basePath: string): NavTab[] {
-  const roots: NavNode[] = [];
-  const stack: NavNode[] = [];
-
-  for (const heading of headings) {
-    const node: NavNode = {
-      depth: heading.depth,
-      label: cleanLabel(heading.text),
-      href: withBase(`${basePath}#${heading.slug}`),
-      children: []
-    };
-
-    while (stack.length > 0 && stack[stack.length - 1].depth >= heading.depth) {
-      stack.pop();
-    }
-
-    if (stack.length === 0) {
-      roots.push(node);
-    } else {
-      stack[stack.length - 1].children.push(node);
-    }
-
-    stack.push(node);
-  }
-
-  return roots.map(toNavTab);
-}
-
-function buildPageTab(
-  headings: HeadingLike[],
-  basePath: string,
-  options: {
-    fallback: string;
-    preferredDepth?: number;
-    trimMatchingFirstChild?: boolean;
-  }
-): NavTab {
-  const preferredDepth = options.preferredDepth ?? 1;
-  const label = getPageLabel(headings, preferredDepth, options.fallback);
-  const children = buildHeadingTree(headings.filter((heading) => heading.depth > 1), basePath);
-
-  if (options.trimMatchingFirstChild && children[0]?.label === label) {
-    children.shift();
-  }
-
-  return children.length > 0
-    ? {
-        label,
-        href: withBase(basePath),
-        children
-      }
-    : {
-        label,
-        href: withBase(basePath)
-      };
 }
 
 function parseReadingOrder(raw: string): ReadingOrderEntry[] {
@@ -184,9 +95,6 @@ if (!introEntry) {
   throw new Error("Missing introduction entry");
 }
 
-const introRendered = await render(introEntry);
-const readmeHeadings = introRendered.headings as HeadingLike[];
-
 const guideEntries = (await getCollection("guide")) as GuideCollectionEntry[];
 const guideIndexEntry = guideEntries.find((entry: GuideCollectionEntry) => getGuideRoute(entry) === guideRootPath);
 
@@ -196,8 +104,6 @@ if (!guideIndexEntry) {
 
 const guideIndexRaw = guideIndexEntry.body;
 const readingOrder = parseReadingOrder(guideIndexRaw);
-const guideIndexRendered = await render(guideIndexEntry);
-const guideIndexHeadings = guideIndexRendered.headings as HeadingLike[];
 
 const readingOrderIndex = new Map<string, number>(
   readingOrder.map((entry, index) => [entry.href.replace(/\/+$/, ""), index])
@@ -223,29 +129,24 @@ const guideChapters: OrderedGuideEntry[] = guideEntries
 const sidebarTabs: NavTab[] = [
   {
     label: "Introduction",
-    children: buildHeadingTree(readmeHeadings.filter((heading) => heading.depth > 1), "/")
+    href: withBase("/")
   },
   {
     label: "Guide",
     children: [
-      buildPageTab(guideIndexHeadings, guideRootPath, {
-        fallback: "Guide",
-        preferredDepth: 2,
-        trimMatchingFirstChild: true
-      }),
-      ...await Promise.all(
-        guideChapters.map(async ({ entry, route }: OrderedGuideEntry) => {
-          const rendered = await render(entry);
-          const headings = rendered.headings as HeadingLike[];
-          const label = getPageLabel(headings, 1, entry.data.title);
-
-          return buildPageTab(headings, route, {
-            fallback: label,
-            preferredDepth: 1
-          });
-        })
-      )
+      {
+        label: "Guide",
+        href: withBase(guideRootPath)
+      },
+      ...guideChapters.map(({ entry, route }: OrderedGuideEntry) => ({
+        label: cleanLabel(entry.data.title),
+        href: withBase(route)
+      }))
     ]
+  },
+  {
+    label: "API",
+    href: withBase(getApiRoutePath())
   },
   {
     label: "Examples",

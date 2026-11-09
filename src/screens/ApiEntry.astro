@@ -4,9 +4,10 @@ import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiDeclaration from "../components/ApiDeclaration.astro";
 import ApiMemberGroups from "../components/ApiMemberGroups.astro";
-import ApiSurface from "../components/ApiSurface.astro";
+import ApiReferenceSidebar from "../components/ApiReferenceSidebar.astro";
 import ApiReflection from "../components/ApiReflection.astro";
 import ApiSignature from "../components/ApiSignature.astro";
+import ApiSurface from "../components/ApiSurface.astro";
 import {
   getReflectionDescriptionForDisplay,
   getReflectionKindLabel,
@@ -48,8 +49,8 @@ const children = getVisibleReflectionChildren(reflection);
 const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
 ---
 
-<DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs}>
-  <ApiSurface groups={groups} activeSlug={entry.id}>
+<DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs} rightPanel="api">
+  <ApiSurface>
     <div class="api-page">
       <header class="api-header">
         <p class="section-label">{getReflectionKindName(reflection.kind)}</p>
@@ -74,6 +75,7 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
       {children.length > 0 ? <ApiMemberGroups members={children} typeLinks={typeLinks} /> : null}
     </div>
   </ApiSurface>
+  <ApiReferenceSidebar slot="right-panel" groups={groups} activeSlug={entry.id} />
 </DocLayout>
 
 <style>

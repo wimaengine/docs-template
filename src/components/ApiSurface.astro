@@ -1,35 +1,22 @@
 ---
-import ApiReferenceSidebar from "./ApiReferenceSidebar.astro";
-
-interface ApiSidebarItem {
-  slug: string;
-  name: string;
-}
-
 interface Props {
-  groups: Array<[string, ApiSidebarItem[]]>;
-  activeSlug?: string;
   blank?: boolean;
 }
 
-const { groups, activeSlug, blank = false } = Astro.props as Props;
+const { blank = false } = Astro.props as Props;
 ---
 
 <div class="api-shell">
   <div class:list={["api-main", blank ? "is-empty" : null]} aria-hidden={blank ? "true" : undefined}>
     <slot />
   </div>
-  <ApiReferenceSidebar groups={groups} activeSlug={activeSlug} />
 </div>
 
 <style>
   .api-shell {
-    width: calc(100% - 17.5rem + 2rem);
-    height: calc(100vh - 4rem);
+    width: 100%;
     box-sizing: border-box;
-    overflow-x: hidden;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
+    min-width: 0;
   }
 
   .api-main {
@@ -45,12 +32,6 @@ const { groups, activeSlug, blank = false } = Astro.props as Props;
   }
 
   @media (max-width: 1100px) {
-    .api-shell {
-      width: 100%;
-      height: auto;
-      overflow: visible;
-    }
-
     .api-main {
       width: 100%;
     }

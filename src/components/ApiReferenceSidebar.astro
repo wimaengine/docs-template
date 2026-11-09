@@ -34,34 +34,36 @@ function formatKind(value: string): string {
 }
 ---
 
-<nav class="api-sidebar" data-scroll-zone="api-reference" aria-label="API reference">
-  <p class="api-sidebar-label">Reference</p>
+<aside class="api-sidebar" data-scroll-zone="api-reference" aria-label="API reference">
+  <nav aria-label="API reference navigation">
+    <p class="api-sidebar-label">Reference</p>
 
-  <div class="api-sidebar-groups">
-    {groups.map(([kind, items]) => (
-      <section class="api-sidebar-group">
-        <h2>{formatKind(kind)}</h2>
-        <ul class="api-sidebar-list">
-          {items.map((item) => {
-            const isActive = item.slug === activeSlug;
+    <div class="api-sidebar-groups">
+      {groups.map(([kind, items]) => (
+        <section class="api-sidebar-group">
+          <h2>{formatKind(kind)}</h2>
+          <ul class="api-sidebar-list">
+            {items.map((item) => {
+              const isActive = item.slug === activeSlug;
 
-            return (
-              <li>
-                <a
-                  href={withBase(getApiRoutePath(item.slug))}
-                  class:list={{ "is-active": isActive }}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  {item.name}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    ))}
-  </div>
-</nav>
+              return (
+                <li>
+                  <a
+                    href={withBase(getApiRoutePath(item.slug))}
+                    class:list={{ "is-active": isActive }}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    {item.name}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  </nav>
+</aside>
 
 <style>
   .api-sidebar {
@@ -71,7 +73,7 @@ function formatKind(value: string): string {
     display: grid;
     gap: 0;
     align-self: start;
-    width: 17.5rem;
+    width: var(--api-sidebar-width);
     height: 100vh;
     overflow-y: auto;
     overflow-anchor: none;

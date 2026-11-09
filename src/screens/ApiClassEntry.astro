@@ -3,6 +3,7 @@ import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiMemberGroups from "../components/ApiMemberGroups.astro";
+import ApiReferenceSidebar from "../components/ApiReferenceSidebar.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import {
   getReflectionDescriptionForDisplay,
@@ -42,8 +43,8 @@ const description = getReflectionDescriptionForDisplay(reflection);
 const tags = getReflectionTagsForDisplay(reflection);
 ---
 
-<DocLayout title={`${getReflectionKindName(reflection.kind)} ${reflection.name} | ${rootPackageName}`} tabs={sidebarTabs}>
-  <ApiSurface groups={groups} activeSlug={entry.id}>
+<DocLayout title={`${getReflectionKindName(reflection.kind)} ${reflection.name} | ${rootPackageName}`} tabs={sidebarTabs} rightPanel="api">
+  <ApiSurface>
     <div class="api-page">
       <header class="api-header">
         <p class="section-label">{getReflectionKindName(reflection.kind)}</p>
@@ -59,6 +60,7 @@ const tags = getReflectionTagsForDisplay(reflection);
       <ApiMemberGroups members={members} typeLinks={typeLinks} />
     </div>
   </ApiSurface>
+  <ApiReferenceSidebar slot="right-panel" groups={groups} activeSlug={entry.id} />
 </DocLayout>
 
 <style>
