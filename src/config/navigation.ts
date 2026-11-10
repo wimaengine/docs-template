@@ -1,6 +1,7 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
 import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
+import { getReflectionKindLabel, getReflectionKindSlug } from "../utils/typedoc.js";
 
 export interface NavTab {
   label: string;
@@ -35,6 +36,22 @@ interface OrderedGuideEntry {
   entry: GuideCollectionEntry;
   index: number;
   route: string;
+}
+
+interface ApiCollectionEntry {
+  id: string;
+  data: {
+    name: string;
+    kind: number;
+  };
+}
+
+interface ApiNavigationGroup {
+  kind: number;
+  items: Array<{
+    label: string;
+    href: string;
+  }>;
 }
 
 function cleanLabel(value: string): string {
@@ -86,16 +103,53 @@ function getGuideRoute(entry: { id: string; slug?: string }): string {
   return cleaned === "index" ? getGuideRoutePath() : getGuideRoutePath(cleaned);
 }
 
+function getApiKindOrder(kind: number): number {
+  const order = ["class", "enum", "variable", "function", "interface", "type-alias"];
+  const slug = getReflectionKindSlug(kind);
+  const index = order.indexOf(slug);
+  return index === -1 ? order.length : index;
+}
+
+function createApiNavigation(apiEntries: ApiCollectionEntry[]): NavTab[] {
+  const groups = new Map<string, ApiNavigationGroup>();
+
+  for (const entry of apiEntries) {
+    const key = getReflectionKindSlug(entry.data.kind);
+    const group = groups.get(key) ?? { kind: entry.data.kind, items: [] };
+    group.items.push({
+      label: entry.data.name,
+      href: withBase(getApiRoutePath(entry.id))
+    });
+    groups.set(key, group);
+  }
+
+  return [...groups.values()]
+    .sort((a, b) => getApiKindOrder(a.kind) - getApiKindOrder(b.kind))
+    .map((group) => ({
+      label: getReflectionKindLabel(group.kind, true),
+      children: group.items
+        .sort((a, b) => a.label.localeCompare(b.label))
+        .map((item) => ({
+          label: item.label,
+          href: item.href
+        }))
+    }));
+}
+
 const guideRootPath = getGuideRoutePath();
+const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
-const introEntries = (await getCollection("intro")) as IntroCollectionEntry[];
+const [introEntries, guideEntries, apiEntries] = await Promise.all([
+  getCollection("intro"),
+  getCollection("guide"),
+  getCollection("api")
+]) as [IntroCollectionEntry[], GuideCollectionEntry[], ApiCollectionEntry[]];
 const introEntry = introEntries[0];
 
 if (!introEntry) {
   throw new Error("Missing introduction entry");
 }
 
-const guideEntries = (await getCollection("guide")) as GuideCollectionEntry[];
 const guideIndexEntry = guideEntries.find((entry: GuideCollectionEntry) => getGuideRoute(entry) === guideRootPath);
 
 if (!guideIndexEntry) {
@@ -146,7 +200,13 @@ const sidebarTabs: NavTab[] = [
   },
   {
     label: "API",
-    href: withBase(getApiRoutePath())
+    children: [
+      {
+        label: "API",
+        href: withBase(apiRootPath)
+      },
+      ...createApiNavigation(apiEntries)
+    ]
   },
   {
     label: "Examples",

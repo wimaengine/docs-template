@@ -1,0 +1,214 @@
+---
+import {
+  getReflectionMemberBadge,
+  getReflectionKindName,
+  ReflectionKind
+} from "../utils/typedoc.js";
+
+interface TypeDocReflection {
+  id: number;
+  name: string;
+  kind: number;
+  [key: string]: any;
+}
+
+interface Props {
+  members: TypeDocReflection[];
+  typeName?: string;
+}
+
+const { members, typeName } = Astro.props as Props;
+
+const indexedMembers = [
+  members.filter((member) => member.kind === ReflectionKind.Constructor),
+  members.filter((member) => member.kind === ReflectionKind.Property || member.kind === ReflectionKind.Accessor),
+  members.filter((member) => member.kind === ReflectionKind.Method),
+  members.filter((member) => [
+    ReflectionKind.Function,
+    ReflectionKind.CallSignature,
+    ReflectionKind.ConstructorSignature
+  ].includes(member.kind)),
+  members.filter((member) => ![
+    ReflectionKind.Constructor,
+    ReflectionKind.Property,
+    ReflectionKind.Accessor,
+    ReflectionKind.Method,
+    ReflectionKind.Function,
+    ReflectionKind.CallSignature,
+    ReflectionKind.ConstructorSignature
+  ].includes(member.kind))
+].flat();
+
+function getIndexBadge(member: TypeDocReflection) {
+  return getReflectionMemberBadge(member.kind) ?? {
+    letter: getReflectionKindName(member.kind).charAt(0).toUpperCase(),
+    name: getReflectionKindName(member.kind)
+  };
+}
+
+function getIndexName(member: TypeDocReflection): string {
+  if (member.kind === ReflectionKind.Constructor || member.kind === ReflectionKind.ConstructorSignature) {
+    return "constructor";
+  }
+
+  return String(member.name || "member");
+}
+---
+
+{members.length > 0 ? (
+  <aside
+    class="api-type-index"
+    data-scroll-zone="type-index"
+    aria-labelledby="api-type-index-title"
+  >
+    <p class="api-type-index-label">{typeName ? `${typeName} index` : "Type index"}</p>
+    <h2 id="api-type-index-title">Index</h2>
+    <nav aria-label="Type member index">
+      <ul class="api-type-index-list">
+        {indexedMembers.map((member) => {
+          const badge = getIndexBadge(member);
+
+          return (
+            <li>
+              <a class="api-type-index-link" href={`#member-${member.id}`}>
+                <span
+                  class={`api-type-index-badge is-${badge.letter.toLowerCase()}`}
+                  title={badge.name}
+                  aria-hidden="true"
+                >
+                  {badge.letter}
+                </span>
+                <span class="api-type-index-name">{getIndexName(member)}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  </aside>
+) : null}
+
+<style>
+  .api-type-index {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 800;
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    width: var(--api-sidebar-width);
+    min-width: 0;
+    max-width: 100vw;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: clip;
+    overflow-anchor: none;
+    padding: 1.25rem 1rem;
+    border: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  .api-type-index-label,
+  .api-type-index h2 {
+    margin: 0;
+  }
+
+  .api-type-index-label {
+    color: var(--accent-secondary);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .api-type-index h2 {
+    padding: 0;
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.2;
+  }
+
+  .api-type-index-list {
+    display: grid;
+    gap: 0.15rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .api-type-index-link {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 0.5rem;
+    padding: 0.3rem 0.2rem;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .api-type-index-link:hover,
+  .api-type-index-link:focus-visible {
+    color: var(--accent);
+  }
+
+  .api-type-index-badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    padding: 0.12rem 0.35rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .api-type-index-badge.is-c {
+    border-color: rgba(244, 114, 182, 0.65);
+    background: rgba(244, 114, 182, 0.14);
+    color: #f9a8d4;
+  }
+
+  .api-type-index-badge.is-p {
+    border-color: rgba(134, 239, 172, 0.6);
+    background: rgba(134, 239, 172, 0.12);
+    color: #86efac;
+  }
+
+  .api-type-index-badge.is-m {
+    border-color: rgba(125, 211, 252, 0.6);
+    background: rgba(125, 211, 252, 0.12);
+    color: #7dd3fc;
+  }
+
+  .api-type-index-badge.is-f {
+    border-color: rgba(252, 211, 77, 0.6);
+    background: rgba(252, 211, 77, 0.12);
+    color: #fcd34d;
+  }
+
+  .api-type-index-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 1100px) {
+    .api-type-index {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow-y: visible;
+      overflow-x: clip;
+      margin: 1rem 0 0;
+      padding: 1rem 0 0;
+      border-width: 1px 0 0;
+    }
+  }
+</style>

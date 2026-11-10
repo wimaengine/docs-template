@@ -3,7 +3,7 @@ import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiMemberGroups from "../components/ApiMemberGroups.astro";
-import ApiReferenceSidebar from "../components/ApiReferenceSidebar.astro";
+import ApiMemberIndex from "../components/ApiMemberIndex.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import {
   getReflectionDescriptionForDisplay,
@@ -32,18 +32,21 @@ interface ApiTypeLink {
 
 interface Props {
   entry: ApiCollectionEntry;
-  groups: Array<[string, Array<{ slug: string; name: string }>]>;
   typeLinks: ApiTypeLink[];
 }
 
-const { entry, groups, typeLinks } = Astro.props as Props;
+const { entry, typeLinks } = Astro.props as Props;
 const reflection = entry.data;
 const members = getVisibleReflectionChildren(reflection);
 const description = getReflectionDescriptionForDisplay(reflection);
 const tags = getReflectionTagsForDisplay(reflection);
 ---
 
-<DocLayout title={`${getReflectionKindName(reflection.kind)} ${reflection.name} | ${rootPackageName}`} tabs={sidebarTabs} rightPanel="api">
+<DocLayout
+  title={`${getReflectionKindName(reflection.kind)} ${reflection.name} | ${rootPackageName}`}
+  tabs={sidebarTabs}
+  rightPanel={members.length > 0 ? "api" : undefined}
+>
   <ApiSurface>
     <div class="api-page">
       <header class="api-header">
@@ -60,7 +63,7 @@ const tags = getReflectionTagsForDisplay(reflection);
       <ApiMemberGroups members={members} typeLinks={typeLinks} />
     </div>
   </ApiSurface>
-  <ApiReferenceSidebar slot="right-panel" groups={groups} activeSlug={entry.id} />
+  <ApiMemberIndex slot="right-panel" members={members} typeName={reflection.name} />
 </DocLayout>
 
 <style>

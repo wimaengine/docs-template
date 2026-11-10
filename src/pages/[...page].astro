@@ -2,10 +2,7 @@
 import { getCollection } from "astro:content";
 import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, routeToParam } from "@configs/site.js";
 import { withBase } from "../utils/url.js";
-import {
-  getReflectionKindSlug,
-  ReflectionKind
-} from "../utils/typedoc.js";
+import { ReflectionKind } from "../utils/typedoc.js";
 import GuideIndex from "../screens/GuideIndex.astro";
 import GuideEntry from "../screens/GuideEntry.astro";
 import ExamplesIndex from "../screens/ExamplesIndex.astro";
@@ -53,8 +50,6 @@ interface ApiTypeLink {
   slug: string;
 }
 
-type ApiGroups = Array<[string, Array<{ slug: string; name: string }>]>;
-
 type PageKind =
   | "guide-index"
   | "guide-entry"
@@ -72,25 +67,6 @@ interface StaticProps {
 
 function splitCamelCase(value: string): string {
   return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
-}
-
-function getApiKindOrder(kind: number): number {
-  switch (kind) {
-    case ReflectionKind.Class:
-      return 0;
-    case ReflectionKind.Enum:
-      return 1;
-    case ReflectionKind.Variable:
-      return 2;
-    case ReflectionKind.Function:
-      return 3;
-    case ReflectionKind.Interface:
-      return 4;
-    case ReflectionKind.TypeAlias:
-      return 5;
-    default:
-      return 6;
-  }
 }
 
 export async function getStaticPaths() {
@@ -179,32 +155,13 @@ const apiTypeLinks = apiEntries.map<ApiTypeLink>((entry) => ({
   name: entry.data.name,
   slug: entry.id
 }));
-const apiGroups = Object.entries(
-  apiEntries
-    .map((entry) => ({
-      slug: entry.id,
-      name: entry.data.name,
-      kind: entry.data.kind
-    }))
-    .sort((a, b) => {
-      const kindCompare = getApiKindOrder(a.kind) - getApiKindOrder(b.kind);
-      if (kindCompare !== 0) return kindCompare;
-      return a.name.localeCompare(b.name);
-    })
-    .reduce<Record<string, Array<{ slug: string; name: string }>>>((acc, apiModule) => {
-      const key = getReflectionKindSlug(apiModule.kind);
-      if (!acc[key]) acc[key] = [];
-      acc[key].push({ slug: apiModule.slug, name: apiModule.name });
-      return acc;
-    }, {})
-) as ApiGroups;
 ---
 
 {guideEntry && kind === "guide-index" ? <GuideIndex entry={guideEntry} /> : null}
 {guideEntry && kind === "guide-entry" ? <GuideEntry entry={guideEntry} /> : null}
 {kind === "examples-index" ? <ExamplesIndex categories={categories} /> : null}
 {exampleEntry && kind === "example-entry" ? <ExampleEntry entry={exampleEntry} sampleUrl={withBase(getExamplesRoutePath(exampleEntry.id, "example.html"))} /> : null}
-{kind === "api-index" ? <ApiIndex groups={apiGroups} /> : null}
-{apiClassEntry && kind === "api-class-entry" ? <ApiClassEntry entry={apiClassEntry} groups={apiGroups} typeLinks={apiTypeLinks} /> : null}
-{apiEnumEntry && kind === "api-enum-entry" ? <ApiEnumEntry entry={apiEnumEntry} groups={apiGroups} typeLinks={apiTypeLinks} /> : null}
-{apiEntry && kind === "api-entry" ? <ApiEntry entry={apiEntry} groups={apiGroups} typeLinks={apiTypeLinks} /> : null}
+{kind === "api-index" ? <ApiIndex /> : null}
+{apiClassEntry && kind === "api-class-entry" ? <ApiClassEntry entry={apiClassEntry} typeLinks={apiTypeLinks} /> : null}
+{apiEnumEntry && kind === "api-enum-entry" ? <ApiEnumEntry entry={apiEnumEntry} typeLinks={apiTypeLinks} /> : null}
+{apiEntry && kind === "api-entry" ? <ApiEntry entry={apiEntry} typeLinks={apiTypeLinks} /> : null}

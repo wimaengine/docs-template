@@ -488,7 +488,6 @@ const hasApiPanel = rightPanel === "api";
         const open = document.body.classList.toggle("menu-open");
         button.setAttribute("aria-expanded", open ? "true" : "false");
       });
-
       const persistScrollPosition = (element, storageKey) => {
         let saveFrame = 0;
 
@@ -536,10 +535,11 @@ const hasApiPanel = rightPanel === "api";
         persistScrollPosition(siteSidebar, `sidebar-scroll:${section}`);
       }
 
-      const apiSidebar = document.querySelector('[data-scroll-zone="api-reference"]');
+      const apiSidebar = document.querySelector('[data-scroll-zone="api-reference"], [data-scroll-zone="type-index"]');
       if (apiSidebar instanceof HTMLElement) {
         persistScrollPosition(apiSidebar, "sidebar-scroll:api-reference");
       }
+
     </script>
   </body>
 </html>
