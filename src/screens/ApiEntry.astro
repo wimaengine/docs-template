@@ -3,16 +3,18 @@ import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiDeclaration from "../components/ApiDeclaration.astro";
+import ApiMarkdown from "../components/ApiMarkdown.astro";
 import ApiMemberGroups from "../components/ApiMemberGroups.astro";
 import ApiMemberIndex from "../components/ApiMemberIndex.astro";
 import ApiReflection from "../components/ApiReflection.astro";
 import ApiSignature from "../components/ApiSignature.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import {
-  getReflectionDescriptionForDisplay,
+  getReflectionDescriptionMarkdown,
   getReflectionKindLabel,
   getReflectionKindName,
-  getReflectionTagsForDisplay,
+  getReflectionSignatures,
+  getReflectionTags,
   getVisibleReflectionChildren,
   ReflectionKind
 } from "../utils/typedoc.js";
@@ -42,8 +44,9 @@ interface Props {
 
 const { entry, typeLinks } = Astro.props as Props;
 const reflection = entry.data;
-const description = getReflectionDescriptionForDisplay(reflection);
-const tags = getReflectionTagsForDisplay(reflection);
+const signature = getReflectionSignatures(reflection)[0];
+const description = getReflectionDescriptionMarkdown(reflection, signature, typeLinks);
+const tags = getReflectionTags(reflection, signature);
 const children = getVisibleReflectionChildren(reflection);
 const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
 ---
@@ -63,7 +66,7 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
         ) : [ReflectionKind.Variable, ReflectionKind.TypeAlias].includes(reflection.kind) ? (
           <ApiDeclaration reflection={reflection} typeLinks={typeLinks} />
         ) : null}
-        {description ? <p class="lead">{description}</p> : null}
+        {description ? <ApiMarkdown content={description} className="lead" /> : null}
         {tags.length > 0 ? (
           <div class="notes">
             {tags.map((tag) => <p><code>{tag}</code></p>)}

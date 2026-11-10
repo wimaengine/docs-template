@@ -1,15 +1,16 @@
 ---
 import {
   formatDefaultValue,
-  getParameterDescription,
-  getReflectionDescription,
+  getParameterDescriptionMarkdown,
+  getReflectionDescriptionMarkdown,
   getReflectionExamples,
   getReflectionSignatures,
   getReflectionTags,
-  getTypeParameters,
-  splitParagraphs
+  getReturnDescriptionMarkdown,
+  getTypeParameters
 } from "../utils/typedoc.js";
 import ApiExamples from "./ApiExamples.astro";
+import ApiMarkdown from "./ApiMarkdown.astro";
 import ApiType from "./ApiType.astro";
 
 interface ApiTypeLink {
@@ -35,15 +36,19 @@ const {
 const signatures = getReflectionSignatures(reflection);
 const entries = (signatures.length > 0 ? signatures : [null]).map((signature) => ({
   signature,
-  description: getReflectionDescription(reflection, signature),
+  description: getReflectionDescriptionMarkdown(reflection, signature, typeLinks),
   examples: getReflectionExamples(reflection, signature),
   tags: getReflectionTags(reflection, signature),
-  typeParameters: getTypeParameters(signature ?? reflection),
-  parameters: signature?.parameters ?? []
+  typeParameters: getTypeParameters(signature ?? reflection, typeLinks),
+  parameters: signature?.parameters ?? [],
+  returnDescription: getReturnDescriptionMarkdown(reflection, signature, typeLinks)
 }));
 const defaultValue = formatDefaultValue(reflection.defaultValue);
 const shouldRender = showDescription || showTags || Boolean(defaultValue) || entries.some((entry) => (
-  entry.examples.length > 0 || entry.typeParameters.length > 0 || entry.parameters.length > 0
+  entry.examples.length > 0 ||
+  entry.typeParameters.length > 0 ||
+  entry.parameters.length > 0 ||
+  Boolean(entry.returnDescription)
 ));
 ---
 
@@ -52,9 +57,7 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
     {entries.map((entry) => (
       <div class="api-reflection-entry">
         {showDescription && entry.description ? (
-          <div class="reflection-description">
-            {splitParagraphs(entry.description).map((paragraph) => <p>{paragraph}</p>)}
-          </div>
+          <ApiMarkdown content={entry.description} className="reflection-description" />
         ) : null}
 
         {entry.examples.length > 0 ? <ApiExamples reflection={reflection} signature={entry.signature} /> : null}
@@ -83,9 +86,7 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
                     </code>
                   </p>
                   {typeParameter.description ? (
-                    <div class="reflection-item-description">
-                      {splitParagraphs(typeParameter.description).map((paragraph) => <p>{paragraph}</p>)}
-                    </div>
+                    <ApiMarkdown content={typeParameter.description} className="reflection-item-description" />
                   ) : null}
                 </div>
               ))}
@@ -111,7 +112,7 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
                     const name = String(parameter.name || "parameter").trim();
                     const rest = flags.isRest ? "..." : "";
                     const optional = flags.isOptional && !flags.isRest ? "?" : "";
-                    const description = getParameterDescription(parameter);
+                    const description = getParameterDescriptionMarkdown(parameter, typeLinks);
                     const defaultValue = formatDefaultValue(parameter.defaultValue);
 
                     return (
@@ -119,9 +120,7 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
                         <td class="reflection-parameter-name"><code>{rest}{name}{optional}</code></td>
                         <td>
                           {description ? (
-                            <div class="reflection-item-description">
-                              {splitParagraphs(description).map((paragraph) => <p>{paragraph}</p>)}
-                            </div>
+                            <ApiMarkdown content={description} className="reflection-item-description" />
                           ) : <span class="reflection-empty">—</span>}
                         </td>
                         <td class="reflection-default-value">
@@ -133,6 +132,13 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
                 </tbody>
               </table>
             </div>
+          </section>
+        ) : null}
+
+        {entry.returnDescription ? (
+          <section class="reflection-meta">
+            <h4>Returns</h4>
+            <ApiMarkdown content={entry.returnDescription} className="reflection-item-description" />
           </section>
         ) : null}
 
@@ -165,16 +171,6 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
     padding-top: 0.9rem;
   }
 
-  .reflection-description,
-  .reflection-item-description {
-    display: grid;
-    gap: 0.35rem;
-    color: var(--muted);
-    line-height: 1.65;
-  }
-
-  .reflection-description p,
-  .reflection-item-description p,
   .reflection-default {
     margin: 0;
   }

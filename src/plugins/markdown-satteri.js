@@ -10,7 +10,10 @@ const alertLabels = {
 };
 
 function rewriteBaseUrl(node, ctx) {
-  if (typeof node.url === "string") {
+  if (
+    typeof node.url === "string" &&
+    !/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(node.url)
+  ) {
     ctx.setProperty(node, "url", withBase(rewriteSiteRoute(node.url)));
   }
 }

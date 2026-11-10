@@ -1,0 +1,69 @@
+import { renderMarkdown } from "../utils/markdown.js";
+
+interface Props {
+  content?: string;
+  className?: string;
+}
+
+const { content = "", className = "" } = Astro.props as Props;
+const html = content ? await renderMarkdown(content) : "";
+---
+
+{html ? <div class:list={["api-markdown", className]} set:html={html}></div> : null}
+
+<style>
+  .api-markdown {
+    display: grid;
+    gap: 0.55rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .api-markdown :global(p),
+  .api-markdown :global(ul),
+  .api-markdown :global(ol),
+  .api-markdown :global(blockquote),
+  .api-markdown :global(pre) {
+    margin: 0;
+  }
+
+  .api-markdown :global(ul),
+  .api-markdown :global(ol) {
+    padding-left: 1.35rem;
+  }
+
+  .api-markdown :global(li + li) {
+    margin-top: 0.25rem;
+  }
+
+  .api-markdown :global(blockquote) {
+    padding-left: 0.85rem;
+    border-left: 2px solid var(--border-strong);
+    color: var(--muted);
+  }
+
+  .api-markdown :global(pre) {
+    overflow-x: auto;
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    background: var(--code-bg);
+  }
+
+  .api-markdown :global(code:not(pre code)) {
+    padding: 0.08rem 0.25rem;
+    background: var(--code-bg);
+    color: var(--code-text);
+  }
+
+  .api-markdown :global(a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 0.15em;
+  }
+
+  .api-markdown :global(a:hover),
+  .api-markdown :global(a:focus-visible) {
+    text-decoration-color: currentColor;
+  }
+</style>

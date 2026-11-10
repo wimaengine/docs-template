@@ -5,6 +5,7 @@ interface ApiTypeLink {
   id: number;
   name: string;
   href: string;
+  isType?: boolean;
 }
 
 interface TypePart {
@@ -21,7 +22,7 @@ const { type, links = [] } = Astro.props as Props;
 const linksById = new Map(links.map((link) => [link.id, link]));
 const linksByName = new Map<string, ApiTypeLink | null>();
 
-for (const link of links) {
+for (const link of links.filter((item) => item.isType !== false)) {
   if (!linksByName.has(link.name)) {
     linksByName.set(link.name, link);
   } else {
