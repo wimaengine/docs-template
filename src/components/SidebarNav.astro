@@ -43,6 +43,18 @@ function renderTabs(items: NavTab[], level = 0): RenderedTab[] {
   return items.map((tab, index) => renderTab(tab, level, index));
 }
 
+function renderTabLabel(tab: NavTab): string {
+  if (!tab.badge) {
+    return `<span class="tab-label">${escape(tab.label)}</span>`;
+  }
+
+  const letter = tab.badge.letter.trim().charAt(0).toUpperCase() || "?";
+  const badgeClass = letter.toLowerCase().replace(/[^a-z0-9-]/g, "") || "unknown";
+  const accessibleLabel = escape(`${tab.badge.name} ${tab.label}`);
+
+  return `<span class="nav-badge is-${badgeClass}" title="${escape(tab.badge.name)}" aria-hidden="true">${escape(letter)}</span><span class="tab-label" aria-label="${accessibleLabel}">${escape(tab.label)}</span>`;
+}
+
 function renderTab(tab: NavTab, level: number, index: number): RenderedTab {
   const children = tab.children?.length ? renderTabs(tab.children, level + 1) : [];
   const active =
@@ -60,13 +72,15 @@ function renderTab(tab: NavTab, level: number, index: number): RenderedTab {
   if (!tab.href) {
     return {
       active,
-      html: `<li class="tab-item"><details class="tab-group"${open ? " open" : ""}><summary class="tab-toggle${active ? " is-active" : ""}"><span>${escape(tab.label)}</span><span class="chevron">›</span></summary>${childHtml}</details></li>`
+      html: `<li class="tab-item"><details class="tab-group"${open ? " open" : ""}><summary class="tab-toggle${active ? " is-active" : ""}">${renderTabLabel(tab)}<span class="chevron">›</span></summary>${childHtml}</details></li>`
     };
   }
 
+  const ariaLabel = tab.badge ? ` aria-label="${escape(`${tab.badge.name} ${tab.label}`)}"` : "";
+
   return {
     active,
-    html: `<li class="tab-item"><a href="${escape(tab.href)}"${active ? ' class="is-active"' : ""}>${escape(tab.label)}</a>${childHtml}</li>`
+    html: `<li class="tab-item"><a href="${escape(tab.href)}"${active ? ' class="is-active"' : ""}${ariaLabel}>${renderTabLabel(tab)}</a>${childHtml}</li>`
   };
 }
 

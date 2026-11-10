@@ -59,6 +59,14 @@ function getApiKindOrder(kind) {
   return index === -1 ? order.length : index;
 }
 
+function getApiBadge(kind) {
+  const name = getReflectionKindLabel(kind).toLowerCase();
+  return {
+    letter: name.charAt(0).toUpperCase(),
+    name
+  };
+}
+
 function createApiNavigation(apiEntries) {
   const groups = new Map();
 
@@ -67,7 +75,8 @@ function createApiNavigation(apiEntries) {
     const group = groups.get(key) ?? { kind: entry.data.kind, items: [] };
     group.items.push({
       label: entry.data.name,
-      href: withBase(getApiRoutePath(entry.id))
+      href: withBase(getApiRoutePath(entry.id)),
+      badge: getApiBadge(entry.data.kind)
     });
     groups.set(key, group);
   }
@@ -80,7 +89,8 @@ function createApiNavigation(apiEntries) {
         .sort((a, b) => a.label.localeCompare(b.label))
         .map((item) => ({
           label: item.label,
-          href: item.href
+          href: item.href,
+          badge: item.badge
         }))
     }));
 }

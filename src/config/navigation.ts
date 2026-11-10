@@ -7,6 +7,10 @@ export interface NavTab {
   label: string;
   href?: string;
   children?: NavTab[];
+  badge?: {
+    letter: string;
+    name: string;
+  };
 }
 
 interface GuideCollectionEntry {
@@ -51,6 +55,10 @@ interface ApiNavigationGroup {
   items: Array<{
     label: string;
     href: string;
+    badge: {
+      letter: string;
+      name: string;
+    };
   }>;
 }
 
@@ -110,6 +118,14 @@ function getApiKindOrder(kind: number): number {
   return index === -1 ? order.length : index;
 }
 
+function getApiBadge(kind: number): { letter: string; name: string } {
+  const name = getReflectionKindLabel(kind).toLowerCase();
+  return {
+    letter: name.charAt(0).toUpperCase(),
+    name
+  };
+}
+
 function createApiNavigation(apiEntries: ApiCollectionEntry[]): NavTab[] {
   const groups = new Map<string, ApiNavigationGroup>();
 
@@ -118,7 +134,8 @@ function createApiNavigation(apiEntries: ApiCollectionEntry[]): NavTab[] {
     const group = groups.get(key) ?? { kind: entry.data.kind, items: [] };
     group.items.push({
       label: entry.data.name,
-      href: withBase(getApiRoutePath(entry.id))
+      href: withBase(getApiRoutePath(entry.id)),
+      badge: getApiBadge(entry.data.kind)
     });
     groups.set(key, group);
   }
@@ -131,7 +148,8 @@ function createApiNavigation(apiEntries: ApiCollectionEntry[]): NavTab[] {
         .sort((a, b) => a.label.localeCompare(b.label))
         .map((item) => ({
           label: item.label,
-          href: item.href
+          href: item.href,
+          badge: item.badge
         }))
     }));
 }
