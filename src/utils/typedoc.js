@@ -21,7 +21,8 @@ const structuredTagNames = new Set([
   "@type",
   "@typeParam",
   "@typedef",
-  "@override"
+  "@override",
+  "@category"
 ]);
 
 const kindLabels = new Map([
