@@ -138,39 +138,6 @@ function routeToParam(value) {
   return normalizeRoutePath(value, "/").replace(/^\/+/, "");
 }
 
-function splitUrl(value) {
-  const [withoutHash, hash = ""] = value.split("#", 2);
-  const [pathname, query = ""] = withoutHash.split("?", 2);
-  return {
-    hash,
-    pathname,
-    query
-  };
-}
-
-function rewriteRoutePrefix(pathname) {
-  if (pathname === "/guide" || pathname.startsWith("/guide/")) {
-    return getGuideRoutePath(pathname.slice("/guide".length));
-  }
-
-  if (pathname === "/examples" || pathname.startsWith("/examples/")) {
-    return getExamplesRoutePath(pathname.slice("/examples".length));
-  }
-
-  if (pathname === "/api" || pathname.startsWith("/api/")) {
-    return getApiRoutePath(pathname.slice("/api".length));
-  }
-
-  return pathname;
-}
-
-function rewriteSiteRoute(value) {
-  const { hash, pathname, query } = splitUrl(value);
-  const rewrittenPathname = rewriteRoutePrefix(pathname);
-
-  return `${rewrittenPathname}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
-}
-
 function getWebsiteConfig() {
   // Astro evaluates astro.config.* and src/content.config.* in separate
   // module contexts. Re-read the integration config through the process
@@ -308,7 +275,6 @@ export {
   getWebsiteConfig,
   joinRoutePath,
   resolveWebsiteConfig,
-  rewriteSiteRoute,
   routeToParam,
   setWebsiteConfig
 };

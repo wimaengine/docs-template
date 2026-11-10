@@ -1,5 +1,5 @@
 import { withBase } from "../utils/url.js";
-import { rewriteSiteRoute } from "../config/site.js";
+import { resolveSiteLink } from "../config/links.js";
 
 const alertLabels = {
   note: "Note",
@@ -14,7 +14,14 @@ function rewriteBaseUrl(node, ctx) {
     typeof node.url === "string" &&
     !/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(node.url)
   ) {
-    ctx.setProperty(node, "url", withBase(rewriteSiteRoute(node.url)));
+    if (node.url.startsWith("#") || node.url.startsWith("?")) {
+      return;
+    }
+
+    const resolvedUrl = resolveSiteLink(node.url, {
+      sourcePath: ctx.fileURL
+    });
+    ctx.setProperty(node, "url", withBase(resolvedUrl));
   }
 }
 

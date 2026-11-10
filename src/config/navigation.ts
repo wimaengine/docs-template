@@ -1,6 +1,7 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
+import { resolveSiteLink } from "./links.js";
+import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
 import { getReflectionKindLabel } from "../utils/typedoc.js";
 
 export interface NavTab {
@@ -27,6 +28,18 @@ interface IntroCollectionEntry {
   body: string;
   data: {
     title?: string;
+  };
+}
+
+interface ExampleCollectionEntry {
+  id: string;
+  filePath?: string;
+  data: {
+    title: string;
+    description: string;
+    category: string;
+    filePath: string;
+    source: string;
   };
 }
 
@@ -104,12 +117,10 @@ function normalizeGuideNavigationRoute(value: string, guideRootPath: string): st
 }
 
 function resolveGuideOrderHref(href: string, guideRootPath: string): string {
-  try {
-    const resolved = new URL(href, `https://docs.invalid${guideRootPath}/`);
-    return normalizeGuideNavigationRoute(rewriteSiteRoute(resolved.pathname), guideRootPath);
-  } catch {
-    return normalizeGuideNavigationRoute(rewriteSiteRoute(href), guideRootPath);
-  }
+  return normalizeGuideNavigationRoute(
+    resolveSiteLink(href, { currentPath: `${guideRootPath}/` }),
+    guideRootPath
+  );
 }
 
 function parseReadingOrder(raw: string, guideRootPath: string): ReadingOrderEntry[] {
@@ -353,11 +364,12 @@ function createGuideNavigation(
 const guideRootPath = getGuideRoutePath();
 const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
-const [introEntries, guideEntries, apiEntries] = await Promise.all([
+const [introEntries, guideEntries, examplesEntries, apiEntries] = await Promise.all([
   getCollection("intro"),
   getCollection("guide"),
+  getCollection("examples"),
   getCollection("api")
-]) as [IntroCollectionEntry[], GuideCollectionEntry[], ApiCollectionEntry[]];
+]) as [IntroCollectionEntry[], GuideCollectionEntry[], ExampleCollectionEntry[], ApiCollectionEntry[]];
 const introEntry = introEntries[0];
 
 if (!introEntry) {

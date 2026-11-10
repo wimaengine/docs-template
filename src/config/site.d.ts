@@ -59,5 +59,4 @@ export declare function getExamplesContentDir(): string;
 export declare function getApiSourceDir(): string;
 export declare function getIntroContentPath(): string;
 export declare function joinRoutePath(...segments: Array<string | undefined | null>): string;
-export declare function rewriteSiteRoute(value: string): string;
 export declare function routeToParam(value: string): string;

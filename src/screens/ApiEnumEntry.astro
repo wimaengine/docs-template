@@ -27,21 +27,15 @@ interface ApiCollectionEntry {
   data: TypeDocReflection;
 }
 
-interface ApiTypeLink {
-  id: number;
-  name: string;
-  href: string;
-}
-
 interface Props {
   entry: ApiCollectionEntry;
-  typeLinks: ApiTypeLink[];
 }
 
-const { entry, typeLinks } = Astro.props as Props;
+const { entry } = Astro.props as Props;
 const reflection = entry.data;
+const sourcePath = reflection.sources?.[0]?.fileName;
 const signature = getReflectionSignatures(reflection)[0];
-const description = getReflectionDescriptionMarkdown(reflection, signature, typeLinks);
+const description = getReflectionDescriptionMarkdown(reflection, signature);
 const tags = getReflectionTags(reflection, signature);
 const members = getVisibleReflectionChildren(reflection)
   .filter((member) => member.kind === ReflectionKind.EnumMember);
@@ -57,7 +51,7 @@ const members = getVisibleReflectionChildren(reflection)
       <header class="api-header">
         <p class="section-label">Enum</p>
         <h1>{reflection.name}</h1>
-        {description ? <ApiMarkdown content={description} className="lead" /> : null}
+        {description ? <ApiMarkdown content={description} className="lead" sourcePath={sourcePath} /> : null}
         {tags.length > 0 ? (
           <div class="notes">
             {tags.map((tag) => <p><code>{tag}</code></p>)}
@@ -79,7 +73,7 @@ const members = getVisibleReflectionChildren(reflection)
                 <header class="member-header">
                   <h3>{member.name}</h3>
                 </header>
-                <ApiReflection reflection={member} typeLinks={typeLinks} />
+                <ApiReflection reflection={member} />
               </article>
             ))}
           </div>

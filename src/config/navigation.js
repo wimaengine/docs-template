@@ -1,6 +1,7 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
+import { resolveSiteLink } from "./links.js";
+import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
 import { getReflectionKindLabel } from "../utils/typedoc.js";
 
 function cleanLabel(value) {
@@ -34,12 +35,10 @@ function normalizeGuideNavigationRoute(value, guideRootPath) {
 }
 
 function resolveGuideOrderHref(href, guideRootPath) {
-  try {
-    const resolved = new URL(href, `https://docs.invalid${guideRootPath}/`);
-    return normalizeGuideNavigationRoute(rewriteSiteRoute(resolved.pathname), guideRootPath);
-  } catch {
-    return normalizeGuideNavigationRoute(rewriteSiteRoute(href), guideRootPath);
-  }
+  return normalizeGuideNavigationRoute(
+    resolveSiteLink(href, { currentPath: `${guideRootPath}/` }),
+    guideRootPath
+  );
 }
 
 function parseReadingOrder(raw, guideRootPath) {
@@ -277,9 +276,10 @@ function createGuideNavigation(guideEntries, guideRootPath, readingOrderIndex) {
 const guideRootPath = getGuideRoutePath();
 const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
-const [introEntries, guideEntries, apiEntries] = await Promise.all([
+const [introEntries, guideEntries, examplesEntries, apiEntries] = await Promise.all([
   getCollection("intro"),
   getCollection("guide"),
+  getCollection("examples"),
   getCollection("api")
 ]);
 const introEntry = introEntries[0];

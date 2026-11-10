@@ -52,14 +52,6 @@ interface ApiCollectionEntry {
   data: TypeDocReflection;
 }
 
-interface ApiTypeLink {
-  id: number;
-  name: string;
-  href: string;
-  markdownHref?: string;
-  isType?: boolean;
-}
-
 type PageKind =
   | "guide-index"
   | "guide-entry"
@@ -77,48 +69,6 @@ interface StaticProps {
 
 function splitCamelCase(value: string): string {
   return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
-}
-
-function collectApiTypeLinks(
-  reflection: TypeDocReflection,
-  route: string,
-  links: ApiTypeLink[],
-  seenIds: Set<number>,
-  anchor?: string,
-  isType = true
-) {
-  if (!Number.isFinite(reflection.id) || seenIds.has(reflection.id)) {
-    return;
-  }
-
-  seenIds.add(reflection.id);
-  const rawHref = anchor ? `${route}#${anchor}` : route;
-
-  links.push({
-    id: reflection.id,
-    name: reflection.name,
-    href: withBase(rawHref),
-    markdownHref: rawHref,
-    isType
-  });
-
-  const children = [
-    ...(reflection.children ?? []).filter((child: TypeDocReflection) => !child.flags?.isInherited),
-    ...(reflection.signatures ?? []),
-    reflection.getSignature,
-    reflection.setSignature
-  ].filter(Boolean) as TypeDocReflection[];
-
-  for (const child of children) {
-    collectApiTypeLinks(
-      child,
-      route,
-      links,
-      seenIds,
-      anchor ?? `member-${child.id}`,
-      false
-    );
-  }
 }
 
 export async function getStaticPaths() {
@@ -202,13 +152,6 @@ const categories = Object.entries(
     }, {})
 );
 
-const apiEntries = (await getCollection("api")) as ApiCollectionEntry[];
-const apiTypeLinks: ApiTypeLink[] = [];
-const seenApiTypeIds = new Set<number>();
-
-for (const entry of apiEntries) {
-  collectApiTypeLinks(entry.data, getApiEntryRoute(entry), apiTypeLinks, seenApiTypeIds);
-}
 ---
 
 {guideEntry && kind === "guide-index" ? <GuideIndex entry={guideEntry} /> : null}
@@ -216,6 +159,6 @@ for (const entry of apiEntries) {
 {kind === "examples-index" ? <ExamplesIndex categories={categories} /> : null}
 {exampleEntry && kind === "example-entry" ? <ExampleEntry entry={exampleEntry} sampleUrl={withBase(getExamplesRoutePath(exampleEntry.id, "example.html"))} /> : null}
 {kind === "api-index" ? <ApiIndex /> : null}
-{apiClassEntry && kind === "api-class-entry" ? <ApiClassEntry entry={apiClassEntry} typeLinks={apiTypeLinks} /> : null}
-{apiEnumEntry && kind === "api-enum-entry" ? <ApiEnumEntry entry={apiEnumEntry} typeLinks={apiTypeLinks} /> : null}
-{apiEntry && kind === "api-entry" ? <ApiEntry entry={apiEntry} typeLinks={apiTypeLinks} /> : null}
+{apiClassEntry && kind === "api-class-entry" ? <ApiClassEntry entry={apiClassEntry} /> : null}
+{apiEnumEntry && kind === "api-enum-entry" ? <ApiEnumEntry entry={apiEnumEntry} /> : null}
+{apiEntry && kind === "api-entry" ? <ApiEntry entry={apiEntry} /> : null}

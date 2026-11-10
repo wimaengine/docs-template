@@ -1,12 +1,14 @@
+---
 import { renderMarkdown } from "../utils/markdown.js";
 
 interface Props {
   content?: string;
   className?: string;
+  sourcePath?: string | URL;
 }
 
-const { content = "", className = "" } = Astro.props as Props;
-const html = content ? await renderMarkdown(content) : "";
+const { content = "", className = "", sourcePath } = Astro.props as Props;
+const html = content ? await renderMarkdown(content, { sourcePath }) : "";
 ---
 
 {html ? <div class:list={["api-markdown", className]} set:html={html}></div> : null}

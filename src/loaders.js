@@ -4,6 +4,7 @@ import { Application, ReflectionKind } from "typedoc";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { projectRootDir } from "./config/project.js";
+import { addApiLink, addExampleLink, addGuideLink, addIntroLink } from "./config/links.js";
 import { getApiSourceDir, getExamplesContentDir, getGuideContentDir, getIntroContentPath } from "./config/site.js";
 
 const apiSourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
@@ -28,7 +29,7 @@ function toTitle(value) {
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function createDeferredGlobLoader({ getBase, getPattern }) {
+function createDeferredGlobLoader({ getBase, getPattern, onStart, onEntry }) {
   return {
     name: "glob-loader",
     async load(context) {
@@ -41,7 +42,24 @@ function createDeferredGlobLoader({ getBase, getPattern }) {
         deferRender: true
       });
 
-      await loader.load(context);
+      onStart?.();
+
+      const store = new Proxy(context.store, {
+        get(target, property) {
+          if (property === "set") {
+            return (entry) => {
+              const result = target.set(entry);
+              onEntry?.(entry);
+              return result;
+            };
+          }
+
+          const value = target[property];
+          return typeof value === "function" ? value.bind(target) : value;
+        }
+      });
+
+      await loader.load({ ...context, store });
     }
   };
 }
@@ -110,6 +128,7 @@ async function syncExampleEntries({ examplesRoot, parseData, store, meta, genera
   );
 
   const validEntries = entries.filter(Boolean).sort((a, b) => a.id.localeCompare(b.id));
+  validEntries.forEach((entry) => addExampleLink(entry));
   const digest = generateDigest(validEntries);
   const previousDigest = meta.get("examples-digest");
 
@@ -360,6 +379,8 @@ const examples = defineCollection({
     async load({ store, parseData, watcher, logger, meta, generateDigest }) {
       const examplesRoot = getExamplesContentDir();
 
+      addExampleLink();
+
       await syncExampleEntries({
         examplesRoot,
         parseData,
@@ -418,9 +439,12 @@ const api = defineCollection({
     async load({ store, parseData }) {
       const entries = await loadApiEntries();
 
+      addApiLink();
+
       store.clear();
 
       for (const entry of entries) {
+        addApiLink(entry);
         store.set({
           id: entry.id,
           data: await parseData({
@@ -443,7 +467,9 @@ const api = defineCollection({
 const guide = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: getGuideContentDir,
-    getPattern: () => "**/*.md"
+    getPattern: () => "**/*.md",
+    onStart: () => addGuideLink(),
+    onEntry: addGuideLink
   }),
   schema: z.object({
     title: z.string()
@@ -453,7 +479,9 @@ const guide = defineCollection({
 const intro = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: () => path.dirname(getIntroContentPath()),
-    getPattern: () => path.basename(getIntroContentPath())
+    getPattern: () => path.basename(getIntroContentPath()),
+    onStart: () => addIntroLink(),
+    onEntry: addIntroLink
   }),
   schema: z.object({
     title: z.string().optional()

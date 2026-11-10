@@ -2,18 +2,11 @@
 import { getTypeParameters, ReflectionKind } from "../utils/typedoc.js";
 import ApiType from "./ApiType.astro";
 
-interface ApiTypeLink {
-  id: number;
-  name: string;
-  href: string;
-}
-
 interface Props {
   reflection: Record<string, any>;
-  typeLinks?: ApiTypeLink[];
 }
 
-const { reflection, typeLinks = [] } = Astro.props as Props;
+const { reflection } = Astro.props as Props;
 const typeParameters = getTypeParameters(reflection);
 const isTypeAlias = reflection.kind === ReflectionKind.TypeAlias;
 const type = reflection.type ?? "unknown";
@@ -31,13 +24,13 @@ const type = reflection.type ?? "unknown";
           {typeParameter.constraint ? (
             <>
               {" extends "}
-              <ApiType type={typeParameter.type} links={typeLinks} />
+                <ApiType type={typeParameter.type} />
             </>
           ) : null}
           {typeParameter.defaultValue ? (
             <>
               {" = "}
-              <ApiType type={typeParameter.default} links={typeLinks} />
+                <ApiType type={typeParameter.default} />
             </>
           ) : null}
         </>
@@ -46,7 +39,7 @@ const type = reflection.type ?? "unknown";
     </>
   ) : null}
   {isTypeAlias ? " = " : ": "}
-  <ApiType type={type} links={typeLinks} />
+  <ApiType type={type} />
 </code>
 
 <style>

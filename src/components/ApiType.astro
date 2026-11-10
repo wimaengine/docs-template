@@ -1,12 +1,6 @@
 ---
-import { getMdnTypeUrl } from "../utils/mdn.js";
-
-interface ApiTypeLink {
-  id: number;
-  name: string;
-  href: string;
-  isType?: boolean;
-}
+import { getLink } from "../config/links.js";
+import { withBase } from "../utils/url.js";
 
 interface TypePart {
   text: string;
@@ -15,44 +9,48 @@ interface TypePart {
 
 interface Props {
   type: any;
-  links?: ApiTypeLink[];
 }
 
-const { type, links = [] } = Astro.props as Props;
-const linksById = new Map(links.map((link) => [link.id, link]));
-const linksByName = new Map<string, ApiTypeLink | null>();
-
-for (const link of links.filter((item) => item.isType !== false)) {
-  if (!linksByName.has(link.name)) {
-    linksByName.set(link.name, link);
-  } else {
-    linksByName.set(link.name, null);
-  }
-}
+const { type } = Astro.props as Props;
 
 interface ResolvedTypeLink {
   href?: string;
 }
 
+function toHref(route: string | undefined): string | undefined {
+  if (!route) {
+    return undefined;
+  }
+
+  return /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(route) ? route : withBase(route);
+}
+
 function getReferenceLink(reference: any): ResolvedTypeLink | undefined {
-  if (typeof reference?.target === "number") {
-    const targetLink = linksById.get(reference.target);
-    if (targetLink) {
-      return targetLink;
+  const targetId = typeof reference?.target === "number"
+    ? reference.target
+    : typeof reference?.target === "string" && /^\d+$/.test(reference.target)
+      ? Number(reference.target)
+      : Number.isFinite(reference?.target?.id)
+        ? reference.target.id
+        : undefined;
+  const names = [
+    targetId === undefined ? undefined : String(targetId),
+    reference?.name,
+    reference?.qualifiedName
+  ];
+
+  for (const name of names) {
+    if (typeof name !== "string") {
+      continue;
+    }
+
+    const href = toHref(getLink(name));
+    if (href) {
+      return { href };
     }
   }
 
-  const name = reference?.name ?? reference?.qualifiedName;
-
-  if (reference?.target === undefined) {
-    const nameLink = linksByName.get(name);
-    if (nameLink) {
-      return nameLink;
-    }
-  }
-
-  const mdnUrl = getMdnTypeUrl(name);
-  return mdnUrl ? { href: mdnUrl } : undefined;
+  return undefined;
 }
 
 function textPart(text: unknown): TypePart[] {
@@ -61,8 +59,8 @@ function textPart(text: unknown): TypePart[] {
 
 function linkedTextPart(text: unknown): TypePart[] {
   const value = String(text ?? "");
-  const mdnUrl = getMdnTypeUrl(value);
-  return mdnUrl ? [{ text: value, href: mdnUrl }] : textPart(value);
+  const href = toHref(getLink(value));
+  return href ? [{ text: value, href }] : textPart(value);
 }
 
 function joinTypeParts(types: any[], separator: string): TypePart[] {
@@ -90,10 +88,8 @@ function getTypeParts(value: any): TypePart[] {
   }
 
   if (typeof value === "string") {
-    const link = linksByName.get(value);
-    return link
-      ? [{ text: value, href: link.href }]
-      : linkedTextPart(value);
+    const href = toHref(getLink(value));
+    return href ? [{ text: value, href }] : textPart(value);
   }
 
   switch (value.type) {

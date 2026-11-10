@@ -13,12 +13,6 @@ interface TypeDocReflection {
   [key: string]: any;
 }
 
-interface ApiTypeLink {
-  id: number;
-  name: string;
-  href: string;
-}
-
 interface MemberBucket {
   id: string;
   label: string;
@@ -28,10 +22,9 @@ interface MemberBucket {
 
 interface Props {
   members: TypeDocReflection[];
-  typeLinks?: ApiTypeLink[];
 }
 
-const { members, typeLinks = [] } = Astro.props as Props;
+const { members } = Astro.props as Props;
 
 function createBucket(
   id: MemberBucket["id"],
@@ -106,14 +99,13 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
                 <ApiMemberTitle
                   reflection={member}
                   name={bucket.kind === "constructor" ? "constructor" : undefined}
-                  typeLinks={typeLinks}
                 />
               </h3>
               {shouldShowMemberKind(member) ? (
                 <p class="member-kind">{getReflectionKindName(member.kind)}</p>
               ) : null}
             </header>
-            <ApiReflection reflection={member} typeLinks={typeLinks} />
+            <ApiReflection reflection={member} />
           </article>
         ))}
       </div>

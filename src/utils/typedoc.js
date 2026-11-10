@@ -1,4 +1,5 @@
 import { ReflectionKind } from "typedoc";
+import { getLink } from "../config/link-map.js";
 
 const structuredTagNames = new Set([
   "@callback",
@@ -153,45 +154,25 @@ function getTargetName(target) {
   return target.name ?? target.qualifiedName ?? "";
 }
 
-function getMarkdownLinkHref(link) {
-  return link?.markdownHref ?? link?.href;
-}
-
-function findApiLinkById(apiLinks, id) {
-  if (id === undefined) {
-    return undefined;
+function getTargetNames(target) {
+  if (!target || typeof target !== "object") {
+    return [];
   }
 
-  return apiLinks.find((link) => link?.id === id);
+  return [target.name, target.qualifiedName]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean);
 }
 
-function findApiLinkByName(apiLinks, name) {
-  const normalizedName = String(name ?? "").trim();
-  if (!normalizedName) {
-    return undefined;
-  }
-
-  const matches = apiLinks.filter((link) => link?.name === normalizedName);
-  return matches.length === 1 ? matches[0] : undefined;
-}
-
-function resolveMarkdownLink(part, apiLinks) {
+function resolveMarkdownLink(part) {
   const target = part?.target;
   const targetId = getTargetId(target);
-  const idLink = findApiLinkById(apiLinks, targetId);
-
-  if (idLink) {
-    return getMarkdownLinkHref(idLink);
-  }
-
   const targetValue = typeof target === "string" ? target.trim() : "";
-  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|\/|#)/i.test(targetValue)) {
-    return targetValue;
-  }
 
   const candidates = [
+    targetId === undefined ? "" : String(targetId),
     targetValue,
-    getTargetName(target),
+    ...getTargetNames(target),
     part?.tsLinkText,
     part?.text
   ]
@@ -199,24 +180,28 @@ function resolveMarkdownLink(part, apiLinks) {
     .filter(Boolean);
 
   for (const candidate of candidates) {
-    const exactLink = findApiLinkByName(apiLinks, candidate);
+    const exactLink = getLink(candidate);
     if (exactLink) {
-      return getMarkdownLinkHref(exactLink);
+      return exactLink;
     }
 
     const separatorIndex = candidate.search(/[.#~]/);
     if (separatorIndex > 0) {
-      const parentLink = findApiLinkByName(apiLinks, candidate.slice(0, separatorIndex));
+      const parentLink = getLink(candidate.slice(0, separatorIndex));
       if (parentLink) {
-        return getMarkdownLinkHref(parentLink);
+        return parentLink;
       }
     }
+  }
+
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|\/|#)/i.test(targetValue)) {
+    return targetValue;
   }
 
   return undefined;
 }
 
-function displayPartsToMarkdown(parts, apiLinks = []) {
+function displayPartsToMarkdown(parts) {
   if (typeof parts === "string") {
     return normalizeMarkdown(parts);
   }
@@ -229,7 +214,7 @@ function displayPartsToMarkdown(parts, apiLinks = []) {
 
       if (part?.kind === "inline-tag") {
         const label = String(part.tsLinkText ?? part.text ?? getTargetName(part.target) ?? "link").trim();
-        const href = resolveMarkdownLink(part, apiLinks);
+        const href = resolveMarkdownLink(part);
         const display = part.tag === "@linkcode"
           ? `\`${escapeMarkdownCode(label)}\``
           : escapeMarkdownLinkLabel(label);
@@ -250,8 +235,8 @@ function getReflectionComment(reflection, signature) {
   return signature?.comment ?? reflection?.comment ?? null;
 }
 
-function getReflectionDescriptionMarkdown(reflection, signature, apiLinks = []) {
-  return displayPartsToMarkdown(getReflectionComment(reflection, signature)?.summary, apiLinks);
+function getReflectionDescriptionMarkdown(reflection, signature) {
+  return displayPartsToMarkdown(getReflectionComment(reflection, signature)?.summary);
 }
 
 function getReflectionTags(reflection, signature) {
@@ -283,8 +268,8 @@ function getBlockTag(reflection, signature, names) {
     .find((tag) => names.includes(tag.tag));
 }
 
-function getBlockTagMarkdown(reflection, signature, names, apiLinks = []) {
-  return displayPartsToMarkdown(getBlockTag(reflection, signature, names)?.content, apiLinks);
+function getBlockTagMarkdown(reflection, signature, names) {
+  return displayPartsToMarkdown(getBlockTag(reflection, signature, names)?.content);
 }
 
 function getReflectionCategory(reflection) {
@@ -395,14 +380,14 @@ function formatDefaultValue(value) {
   return typeof value === "string" ? value : formatType(value);
 }
 
-function getTypeParameters(reflection, apiLinks = []) {
+function getTypeParameters(reflection) {
   return (reflection?.typeParameters ?? []).map((typeParameter) => ({
     name: typeParameter.name,
     type: typeParameter.type,
     constraint: formatType(typeParameter.type),
     default: typeParameter.default,
     defaultValue: formatDefaultValue(typeParameter.default),
-    description: displayPartsToMarkdown(typeParameter.comment?.summary, apiLinks)
+    description: displayPartsToMarkdown(typeParameter.comment?.summary)
   }));
 }
 
@@ -429,12 +414,12 @@ function getReflectionSignatures(reflection) {
   return signatures;
 }
 
-function getParameterDescriptionMarkdown(parameter, apiLinks = []) {
-  return displayPartsToMarkdown(parameter.comment?.summary, apiLinks);
+function getParameterDescriptionMarkdown(parameter) {
+  return displayPartsToMarkdown(parameter.comment?.summary);
 }
 
-function getReturnDescriptionMarkdown(reflection, signature, apiLinks = []) {
-  return getBlockTagMarkdown(reflection, signature, ["@return", "@returns"], apiLinks);
+function getReturnDescriptionMarkdown(reflection, signature) {
+  return getBlockTagMarkdown(reflection, signature, ["@return", "@returns"]);
 }
 
 function getSourceOrder(reflection) {

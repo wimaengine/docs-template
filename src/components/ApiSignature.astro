@@ -6,26 +6,18 @@ import {
 } from "../utils/typedoc.js";
 import ApiType from "./ApiType.astro";
 
-interface ApiTypeLink {
-  id: number;
-  name: string;
-  href: string;
-}
-
 interface Props {
   reflection: Record<string, any>;
   name?: string;
   namePrefix?: string;
   showName?: boolean;
-  typeLinks?: ApiTypeLink[];
 }
 
 const {
   reflection,
   name,
   namePrefix = "",
-  showName = true,
-  typeLinks = []
+  showName = true
 } = Astro.props as Props;
 
 const signature = getReflectionSignatures(reflection)[0] ?? reflection;
@@ -55,13 +47,13 @@ function getParameterName(parameter: Record<string, any>): string {
             {typeParameter.constraint ? (
               <>
                 {" extends "}
-                <ApiType type={typeParameter.type} links={typeLinks} />
+                <ApiType type={typeParameter.type} />
               </>
             ) : null}
             {typeParameter.defaultValue ? (
               <>
                 {" = "}
-                <ApiType type={typeParameter.default} links={typeLinks} />
+                <ApiType type={typeParameter.default} />
               </>
             ) : null}
           </span>
@@ -75,14 +67,14 @@ function getParameterName(parameter: Record<string, any>): string {
     <>
       {index > 0 ? ", " : null}
       <span class="api-signature-parameter">
-        {getParameterName(parameter)}{": "}<ApiType type={parameter.type ?? "unknown"} links={typeLinks} />
+        {getParameterName(parameter)}{": "}<ApiType type={parameter.type ?? "unknown"} />
       </span>
     </>
   ))}
   {")"}
   {returnType ? (
     <>
-      {": "}<ApiType type={returnType} links={typeLinks} />
+      {": "}<ApiType type={returnType} />
     </>
   ) : null}
 </code>
