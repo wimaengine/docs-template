@@ -24,6 +24,7 @@ const structuredTagNames = new Set([
   "@typedef",
   "@override",
   "@category",
+  "@throws",
   "@example"
 ]);
 
@@ -219,6 +220,13 @@ function getReflectionTags(reflection, signature) {
       const content = displayPartsToText(tag.content);
       return normalizeInlineText([tag.tag, tag.name, content].filter(Boolean).join(" "));
     })
+    .filter(Boolean);
+}
+
+function getReflectionThrowsMarkdown(reflection, signature) {
+  return (getReflectionComment(reflection, signature)?.blockTags ?? [])
+    .filter((tag) => tag.tag === "@throws")
+    .map((tag) => displayPartsToMarkdown(tag.content))
     .filter(Boolean);
 }
 
@@ -426,6 +434,7 @@ export {
   getReflectionKindSlug,
   getReflectionSignatures,
   getReflectionTags,
+  getReflectionThrowsMarkdown,
   getReturnDescriptionMarkdown,
   getSourceOrder,
   getTypeParameters,

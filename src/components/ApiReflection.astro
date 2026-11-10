@@ -6,6 +6,7 @@ import {
   getReflectionExamples,
   getReflectionSignatures,
   getReflectionTags,
+  getReflectionThrowsMarkdown,
   getReturnDescriptionMarkdown,
   getTypeParameters
 } from "../utils/typedoc.js";
@@ -32,6 +33,7 @@ const entries = (signatures.length > 0 ? signatures : [null]).map((signature) =>
   description: getReflectionDescriptionMarkdown(reflection, signature),
   examples: getReflectionExamples(reflection, signature),
   tags: getReflectionTags(reflection, signature),
+  throws: getReflectionThrowsMarkdown(reflection, signature),
   typeParameters: getTypeParameters(signature ?? reflection),
   parameters: signature?.parameters ?? [],
   returnDescription: getReturnDescriptionMarkdown(reflection, signature)
@@ -39,6 +41,7 @@ const entries = (signatures.length > 0 ? signatures : [null]).map((signature) =>
 const defaultValue = formatDefaultValue(reflection.defaultValue);
 const shouldRender = showDescription || showTags || Boolean(defaultValue) || entries.some((entry) => (
   entry.examples.length > 0 ||
+  entry.throws.length > 0 ||
   entry.typeParameters.length > 0 ||
   entry.parameters.length > 0 ||
   Boolean(entry.returnDescription)
@@ -124,6 +127,19 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
                   })}
                 </tbody>
               </table>
+            </div>
+          </section>
+        ) : null}
+
+        {entry.throws.length > 0 ? (
+          <section class="reflection-meta">
+            <h4>Throws</h4>
+            <div class="reflection-list">
+              {entry.throws.map((description) => (
+                <div class="reflection-item">
+                  <ApiMarkdown content={description} className="reflection-item-description" sourcePath={sourcePath} />
+                </div>
+              ))}
             </div>
           </section>
         ) : null}
