@@ -1,7 +1,7 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
 import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
-import { getReflectionKindLabel, getReflectionKindSlug } from "../utils/typedoc.js";
+import { getReflectionKindLabel } from "../utils/typedoc.js";
 
 export interface NavTab {
   label: string;
@@ -52,16 +52,19 @@ interface ApiCollectionEntry {
   };
 }
 
-interface ApiNavigationGroup {
-  kind: number;
-  items: Array<{
-    label: string;
-    href: string;
-    badge: {
-      letter: string;
-      name: string;
-    };
-  }>;
+interface ApiNavigationEntry {
+  label: string;
+  href: string;
+  badge: {
+    letter: string;
+    name: string;
+  };
+}
+
+interface ApiNavigationNode {
+  segment: string;
+  entry: ApiNavigationEntry | null;
+  children: Map<string, ApiNavigationNode>;
 }
 
 function cleanLabel(value: string): string {
@@ -113,13 +116,6 @@ function getGuideRoute(entry: { id: string; slug?: string }): string {
   return cleaned === "index" ? getGuideRoutePath() : getGuideRoutePath(cleaned);
 }
 
-function getApiKindOrder(kind: number): number {
-  const order = ["class", "enum", "variable", "function", "interface", "type-alias"];
-  const slug = getReflectionKindSlug(kind);
-  const index = order.indexOf(slug);
-  return index === -1 ? order.length : index;
-}
-
 function getApiBadge(kind: number): { letter: string; name: string } {
   const name = getReflectionKindLabel(kind).toLowerCase();
   return {
@@ -128,32 +124,79 @@ function getApiBadge(kind: number): { letter: string; name: string } {
   };
 }
 
-function createApiNavigation(apiEntries: ApiCollectionEntry[]): NavTab[] {
-  const groups = new Map<string, ApiNavigationGroup>();
+function formatApiNavigationGroupLabel(value: string): string {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+}
 
-  for (const entry of apiEntries) {
-    const key = getReflectionKindSlug(entry.data.kind);
-    const group = groups.get(key) ?? { kind: entry.data.kind, items: [] };
-    group.items.push({
-      label: entry.data.name,
-      href: withBase(getApiEntryRoute(entry)),
-      badge: getApiBadge(entry.data.kind)
-    });
-    groups.set(key, group);
+function getApiRouteSegments(route: string, apiRootPath: string): string[] {
+  const prefix = `${apiRootPath}/`;
+
+  if (!route.startsWith(prefix)) {
+    throw new Error(`API route "${route}" is outside the configured API route "${apiRootPath}".`);
   }
 
-  return [...groups.values()]
-    .sort((a, b) => getApiKindOrder(a.kind) - getApiKindOrder(b.kind))
-    .map((group) => ({
-      label: getReflectionKindLabel(group.kind, true),
-      children: group.items
-        .sort((a, b) => a.label.localeCompare(b.label))
-        .map((item) => ({
-          label: item.label,
-          href: item.href,
-          badge: item.badge
-        }))
-    }));
+  return route.slice(prefix.length).split("/").filter(Boolean);
+}
+
+function createApiNavigation(apiEntries: ApiCollectionEntry[], apiRootPath: string): NavTab[] {
+  const root: ApiNavigationNode = {
+    segment: "",
+    entry: null,
+    children: new Map()
+  };
+
+  for (const entry of apiEntries) {
+    const route = getApiEntryRoute(entry);
+    const segments = getApiRouteSegments(route, apiRootPath);
+
+    if (segments.length === 0) {
+      throw new Error(`API entry "${entry.id}" did not produce a nested route.`);
+    }
+
+    let node = root;
+
+    for (const segment of segments) {
+      let child = node.children.get(segment);
+
+      if (!child) {
+        child = {
+          segment,
+          entry: null,
+          children: new Map()
+        };
+        node.children.set(segment, child);
+      }
+
+      node = child;
+    }
+
+    if (node.entry) {
+      throw new Error(`API route collision: "${route}" is used by multiple entries.`);
+    }
+
+    node.entry = {
+      label: entry.data.name,
+      href: withBase(route),
+      badge: getApiBadge(entry.data.kind)
+    };
+  }
+
+  function renderNode(node: ApiNavigationNode): NavTab[] {
+    return [...node.children.values()]
+      .sort((a, b) => a.segment.localeCompare(b.segment))
+      .map((child) => {
+        const children = renderNode(child);
+        const item: NavTab = child.entry ?? {
+          label: formatApiNavigationGroupLabel(child.segment)
+        };
+
+        return children.length > 0 ? { ...item, children } : item;
+      });
+  }
+
+  return renderNode(root);
 }
 
 const guideRootPath = getGuideRoutePath();
@@ -225,7 +268,7 @@ const sidebarTabs: NavTab[] = [
         label: "Introduction",
         href: withBase(apiRootPath)
       },
-      ...createApiNavigation(apiEntries)
+      ...createApiNavigation(apiEntries, apiRootPath)
     ]
   },
   {
