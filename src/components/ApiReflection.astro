@@ -3,11 +3,13 @@ import {
   formatDefaultValue,
   getParameterDescription,
   getReflectionDescription,
+  getReflectionExamples,
   getReflectionSignatures,
   getReflectionTags,
   getTypeParameters,
   splitParagraphs
 } from "../utils/typedoc.js";
+import ApiExamples from "./ApiExamples.astro";
 import ApiType from "./ApiType.astro";
 
 interface ApiTypeLink {
@@ -32,14 +34,16 @@ const {
 
 const signatures = getReflectionSignatures(reflection);
 const entries = (signatures.length > 0 ? signatures : [null]).map((signature) => ({
+  signature,
   description: getReflectionDescription(reflection, signature),
+  examples: getReflectionExamples(reflection, signature),
   tags: getReflectionTags(reflection, signature),
   typeParameters: getTypeParameters(signature ?? reflection),
   parameters: signature?.parameters ?? []
 }));
 const defaultValue = formatDefaultValue(reflection.defaultValue);
 const shouldRender = showDescription || showTags || Boolean(defaultValue) || entries.some((entry) => (
-  entry.typeParameters.length > 0 || entry.parameters.length > 0
+  entry.examples.length > 0 || entry.typeParameters.length > 0 || entry.parameters.length > 0
 ));
 ---
 
@@ -52,6 +56,8 @@ const shouldRender = showDescription || showTags || Boolean(defaultValue) || ent
             {splitParagraphs(entry.description).map((paragraph) => <p>{paragraph}</p>)}
           </div>
         ) : null}
+
+        {entry.examples.length > 0 ? <ApiExamples reflection={reflection} signature={entry.signature} /> : null}
 
         {entry.typeParameters.length > 0 ? (
           <section class="reflection-meta">

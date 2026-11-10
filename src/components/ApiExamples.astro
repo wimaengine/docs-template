@@ -1,0 +1,53 @@
+---
+import { Code } from "astro:components";
+import { getReflectionExamples } from "../utils/typedoc.js";
+
+interface Props {
+  reflection: Record<string, any>;
+  signature?: Record<string, any> | null;
+}
+
+const { reflection, signature = null } = Astro.props as Props;
+const examples = getReflectionExamples(reflection, signature);
+---
+
+{examples.length > 0 ? (
+  <section class="api-examples">
+    <h4>Examples</h4>
+    {examples.map((example) => (
+      <div class="api-example-code">
+        <Code code={example.code} lang={example.language} />
+      </div>
+    ))}
+  </section>
+) : null}
+
+<style>
+  .api-examples {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .api-examples h4 {
+    margin: 0;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .api-example-code {
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .api-example-code :global(.astro-code) {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .api-example-code :global(pre) {
+    margin: 0;
+    overflow-x: auto;
+  }
+</style>

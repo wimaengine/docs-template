@@ -1,6 +1,7 @@
 ---
 import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
+import ApiExamples from "../components/ApiExamples.astro";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiReflection from "../components/ApiReflection.astro";
 import ApiMemberIndex from "../components/ApiMemberIndex.astro";
@@ -59,6 +60,7 @@ const members = getVisibleReflectionChildren(reflection)
             {tags.map((tag) => <p><code>{tag}</code></p>)}
           </div>
         ) : null}
+        <ApiExamples reflection={reflection} />
       </header>
 
       {members.length > 0 ? (

@@ -1,6 +1,7 @@
 ---
 import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
+import ApiExamples from "../components/ApiExamples.astro";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiMemberGroups from "../components/ApiMemberGroups.astro";
 import ApiMemberIndex from "../components/ApiMemberIndex.astro";
@@ -58,6 +59,7 @@ const tags = getReflectionTagsForDisplay(reflection);
             {tags.map((tag) => <p><code>{tag}</code></p>)}
           </div>
         ) : null}
+        <ApiExamples reflection={reflection} />
       </header>
 
       <ApiMemberGroups members={members} typeLinks={typeLinks} />

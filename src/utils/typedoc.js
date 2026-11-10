@@ -22,7 +22,8 @@ const structuredTagNames = new Set([
   "@typeParam",
   "@typedef",
   "@override",
-  "@category"
+  "@category",
+  "@example"
 ]);
 
 const kindLabels = new Map([
@@ -96,6 +97,16 @@ function displayPartsToText(parts) {
     .join(""));
 }
 
+function displayPartsToRawText(parts) {
+  if (typeof parts === "string") {
+    return parts;
+  }
+
+  return (parts ?? [])
+    .map((part) => typeof part === "string" ? part : String(part?.text ?? ""))
+    .join("");
+}
+
 function getReflectionComment(reflection, signature) {
   return signature?.comment ?? reflection?.comment ?? null;
 }
@@ -112,6 +123,20 @@ function getReflectionTags(reflection, signature) {
       return normalizeInlineText([tag.tag, tag.name, content].filter(Boolean).join(" "));
     })
     .filter(Boolean);
+}
+
+function getReflectionExamples(reflection, signature) {
+  return (getReflectionComment(reflection, signature)?.blockTags ?? [])
+    .filter((tag) => tag.tag === "@example")
+    .map((tag) => {
+      const content = displayPartsToRawText(tag.content).replace(/\r\n?/g, "\n").trim();
+      const fenced = content.match(/```([^\n]*)\n([\s\S]*?)\n```/);
+      const language = fenced?.[1].trim().split(/\s+/, 1)[0] || "js";
+      const code = (fenced?.[2] ?? content).trim();
+
+      return { code, language };
+    })
+    .filter((example) => example.code);
 }
 
 function getBlockTag(reflection, signature, names) {
@@ -315,6 +340,7 @@ export {
   getReflectionCategory,
   getReflectionDescription,
   getReflectionDescriptionForDisplay,
+  getReflectionExamples,
   getReflectionMemberBadge,
   getReflectionKindLabel,
   getReflectionKindName,
