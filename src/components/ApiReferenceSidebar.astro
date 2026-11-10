@@ -1,10 +1,8 @@
 ---
-import { getApiRoutePath } from "../config/site.js";
-import { withBase } from "../utils/url.js";
-
 interface ApiSidebarItem {
   slug: string;
   name: string;
+  href: string;
 }
 
 interface Props {
@@ -49,7 +47,7 @@ function formatKind(value: string): string {
               return (
                 <li>
                   <a
-                    href={withBase(getApiRoutePath(item.slug))}
+                    href={item.href}
                     class:list={{ "is-active": isActive }}
                     aria-current={isActive ? "page" : undefined}
                   >

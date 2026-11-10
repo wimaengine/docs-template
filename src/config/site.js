@@ -1,10 +1,52 @@
 import path from "node:path";
 import { projectRootDir } from "./project.js";
+import { getReflectionCategory, getReflectionKindSlug } from "../utils/typedoc.js";
+
+const websiteConfigRegistryKey = "__WIMA_DOCS_WEBSITE_CONFIG_REGISTRY__";
+
+// Function-valued options cannot cross Astro's JSON config bridge. Keep the
+// resolver in the shared process and bridge only the serializable settings.
+function getWebsiteConfigRegistry() {
+  if (typeof process === "undefined") {
+    return null;
+  }
+
+  if (!(process[websiteConfigRegistryKey] instanceof Map)) {
+    process[websiteConfigRegistryKey] = new Map();
+  }
+
+  return process[websiteConfigRegistryKey];
+}
+
+function getRegisteredApiEntryRoute() {
+  return getWebsiteConfigRegistry()?.get(projectRootDir);
+}
+
+function setRegisteredApiEntryRoute(routeResolver) {
+  getWebsiteConfigRegistry()?.set(projectRootDir, routeResolver);
+}
+
+function slugifyRouteSegment(value) {
+  return String(value ?? "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/[_\s]+/g, "-")
+    .replace(/[^a-z0-9-]/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
+function defaultApiEntryRoute(_path, reflection) {
+  const kind = getReflectionKindSlug(reflection?.kind);
+  const name = slugifyRouteSegment(reflection?.name) || "entry";
+  return `${kind}/${name}`;
+}
 
 const defaultWebsiteConfig = Object.freeze({
   guideRoute: "/guide",
   examplesRoute: "/examples",
   apiRoute: "/api",
+  apiEntryRoute: defaultApiEntryRoute,
   guideContentDir: "content/guide",
   examplesContentDir: "examples",
   apiSourceDir: "src",
@@ -31,7 +73,9 @@ function readEnvironmentWebsiteConfig() {
       return null;
     }
 
-    return resolveWebsiteConfig(payload.config);
+    return resolveWebsiteConfig(payload.config, {
+      apiEntryRoute: getRegisteredApiEntryRoute()
+    });
   } catch {
     return null;
   }
@@ -51,11 +95,24 @@ function normalizeContentPath(value, fallback) {
   return path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(projectRootDir, raw);
 }
 
-function resolveWebsiteConfig(options = {}) {
+function resolveApiEntryRoute(options, registeredApiEntryRoute) {
+  if (options.apiEntryRoute !== undefined) {
+    if (typeof options.apiEntryRoute !== "function") {
+      throw new TypeError("apiEntryRoute must be a function");
+    }
+
+    return options.apiEntryRoute;
+  }
+
+  return registeredApiEntryRoute ?? defaultWebsiteConfig.apiEntryRoute;
+}
+
+function resolveWebsiteConfig(options = {}, { apiEntryRoute: registeredApiEntryRoute } = {}) {
   const config = {
     guideRoute: normalizeRoutePath(options.guideRoute, defaultWebsiteConfig.guideRoute),
     examplesRoute: normalizeRoutePath(options.examplesRoute, defaultWebsiteConfig.examplesRoute),
     apiRoute: normalizeRoutePath(options.apiRoute, defaultWebsiteConfig.apiRoute),
+    apiEntryRoute: resolveApiEntryRoute(options, registeredApiEntryRoute),
     guideContentDir: normalizeContentPath(options.guideContentDir, defaultWebsiteConfig.guideContentDir),
     examplesContentDir: normalizeContentPath(options.examplesContentDir, defaultWebsiteConfig.examplesContentDir),
     apiSourceDir: normalizeContentPath(options.apiSourceDir, defaultWebsiteConfig.apiSourceDir),
@@ -134,11 +191,13 @@ function getWebsiteConfig() {
 
 function setWebsiteConfig(options = {}) {
   websiteConfig = resolveWebsiteConfig(options);
+  setRegisteredApiEntryRoute(websiteConfig.apiEntryRoute);
 
   if (typeof process !== "undefined") {
+    const { apiEntryRoute: _apiEntryRoute, ...serializableConfig } = websiteConfig;
     process.env[websiteConfigEnvironmentKey] = JSON.stringify({
       root: projectRootDir,
-      config: websiteConfig
+      config: serializableConfig
     });
   }
 
@@ -155,6 +214,55 @@ function getExamplesRoutePath(...segments) {
 
 function getApiRoutePath(...segments) {
   return joinRoutePath(getWebsiteConfig().apiRoute, ...segments);
+}
+
+function getApiEntryRouteContext(entry) {
+  return {
+    path: entry.id,
+    reflection: entry.data,
+    category: getReflectionCategory(entry.data)
+  };
+}
+
+function getApiEntryRoute(entry) {
+  const { path: entryPath, reflection, category } = getApiEntryRouteContext(entry);
+  const relativePath = getWebsiteConfig().apiEntryRoute(entryPath, reflection, category);
+
+  if (typeof relativePath !== "string" || relativePath.trim() === "") {
+    throw new TypeError("apiEntryRoute must return a non-empty relative path");
+  }
+
+  const normalizedPath = relativePath.trim();
+  const pathSegments = normalizedPath.split("/").filter(Boolean);
+
+  if (
+    normalizedPath.startsWith("/") ||
+    /^[a-z][a-z\d+.-]*:/i.test(normalizedPath) ||
+    normalizedPath.includes("?") ||
+    normalizedPath.includes("#") ||
+    pathSegments.some((segment) => segment === "." || segment === "..")
+  ) {
+    throw new Error("apiEntryRoute must return a relative path without a scheme, query, hash, or dot segments");
+  }
+
+  return getApiRoutePath(normalizedPath);
+}
+
+function assertUniqueApiEntryRoutes(entries) {
+  const routes = new Map();
+
+  for (const entry of entries) {
+    const route = getApiEntryRoute(entry);
+    const previous = routes.get(route);
+
+    if (previous) {
+      throw new Error(
+        `API route collision: "${route}" is used by "${previous.id}" and "${entry.id}".`
+      );
+    }
+
+    routes.set(route, entry);
+  }
 }
 
 function getGuideContentDir() {
@@ -175,7 +283,10 @@ function getIntroContentPath() {
 
 export {
   defaultWebsiteConfig,
+  assertUniqueApiEntryRoutes,
   getApiRoutePath,
+  getApiEntryRoute,
+  getApiEntryRouteContext,
   getApiSourceDir,
   getExamplesContentDir,
   getExamplesRoutePath,

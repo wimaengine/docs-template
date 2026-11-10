@@ -1,6 +1,13 @@
 ---
 import { getCollection } from "astro:content";
-import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, routeToParam } from "@configs/site.js";
+import {
+  assertUniqueApiEntryRoutes,
+  getApiEntryRoute,
+  getApiRoutePath,
+  getExamplesRoutePath,
+  getGuideRoutePath,
+  routeToParam
+} from "@configs/site.js";
 import { withBase } from "../utils/url.js";
 import { ReflectionKind } from "../utils/typedoc.js";
 import GuideIndex from "../screens/GuideIndex.astro";
@@ -47,7 +54,7 @@ interface ApiCollectionEntry {
 interface ApiTypeLink {
   id: number;
   name: string;
-  slug: string;
+  href: string;
 }
 
 type PageKind =
@@ -80,6 +87,8 @@ export async function getStaticPaths() {
   const examplesRootForPaths = getExamplesRoutePath();
   const apiRootForPaths = getApiRoutePath();
 
+  assertUniqueApiEntryRoutes(apiEntriesForPaths);
+
   return [
     ...guideEntriesForPaths.map((entry) => {
       const cleaned = cleanGuideSlug(entry.slug ?? entry.id);
@@ -106,7 +115,7 @@ export async function getStaticPaths() {
       props: { kind: "api-index" }
     },
     ...apiEntriesForPaths.map((entry) => ({
-      params: { page: routeToParam(getApiRoutePath(entry.id)) },
+      params: { page: routeToParam(getApiEntryRoute(entry)) },
       props: {
         kind: entry.data.kind === ReflectionKind.Class || entry.data.kind === ReflectionKind.Interface
           ? "api-class-entry"
@@ -153,7 +162,7 @@ const apiEntries = (await getCollection("api")) as ApiCollectionEntry[];
 const apiTypeLinks = apiEntries.map<ApiTypeLink>((entry) => ({
   id: entry.data.id,
   name: entry.data.name,
-  slug: entry.id
+  href: withBase(getApiEntryRoute(entry))
 }));
 ---
 

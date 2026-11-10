@@ -1,6 +1,6 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
+import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
 import { getReflectionKindLabel, getReflectionKindSlug } from "../utils/typedoc.js";
 
 export interface NavTab {
@@ -45,8 +45,10 @@ interface OrderedGuideEntry {
 interface ApiCollectionEntry {
   id: string;
   data: {
+    id: number;
     name: string;
     kind: number;
+    [key: string]: unknown;
   };
 }
 
@@ -134,7 +136,7 @@ function createApiNavigation(apiEntries: ApiCollectionEntry[]): NavTab[] {
     const group = groups.get(key) ?? { kind: entry.data.kind, items: [] };
     group.items.push({
       label: entry.data.name,
-      href: withBase(getApiRoutePath(entry.id)),
+      href: withBase(getApiEntryRoute(entry)),
       badge: getApiBadge(entry.data.kind)
     });
     groups.set(key, group);

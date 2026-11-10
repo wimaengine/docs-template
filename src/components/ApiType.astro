@@ -1,17 +1,14 @@
 ---
-import { getApiRoutePath } from "../config/site.js";
 import { getMdnTypeUrl } from "../utils/mdn.js";
-import { withBase } from "../utils/url.js";
 
 interface ApiTypeLink {
   id: number;
   name: string;
-  slug: string;
+  href: string;
 }
 
 interface TypePart {
   text: string;
-  slug?: string;
   href?: string;
 }
 
@@ -33,7 +30,6 @@ for (const link of links) {
 }
 
 interface ResolvedTypeLink {
-  slug?: string;
   href?: string;
 }
 
@@ -95,7 +91,7 @@ function getTypeParts(value: any): TypePart[] {
   if (typeof value === "string") {
     const link = linksByName.get(value);
     return link
-      ? [{ text: value, slug: link.slug }]
+      ? [{ text: value, href: link.href }]
       : linkedTextPart(value);
   }
 
@@ -107,7 +103,6 @@ function getTypeParts(value: any): TypePart[] {
       const link = getReferenceLink(value);
       const parts: TypePart[] = [{
         text: name,
-        slug: link?.slug,
         href: link?.href
       }];
       const typeArguments = value.typeArguments ?? [];
@@ -206,7 +201,7 @@ function getTypeParts(value: any): TypePart[] {
 const parts = getTypeParts(type);
 
 function getPartHref(part: TypePart): string | undefined {
-  return part.href ?? (part.slug ? withBase(getApiRoutePath(part.slug)) : undefined);
+  return part.href;
 }
 ---
 

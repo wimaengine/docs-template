@@ -122,6 +122,27 @@ function getBlockTagDescription(reflection, signature, names) {
   return displayPartsToText(getBlockTag(reflection, signature, names)?.content);
 }
 
+function getReflectionCategory(reflection) {
+  const comments = [
+    getReflectionSignatures(reflection)[0]?.comment,
+    reflection?.comment
+  ];
+
+  for (const comment of comments) {
+    const tag = comment?.blockTags?.find((item) => item.tag === "@category");
+    if (!tag) {
+      continue;
+    }
+
+    const category = normalizeInlineText(displayPartsToText(tag.content) || tag.name);
+    if (category) {
+      return category;
+    }
+  }
+
+  return undefined;
+}
+
 function formatLiteralValue(value) {
   if (value === null) {
     return "null";
@@ -290,6 +311,7 @@ export {
   getBlockTagDescription,
   getParameterDescription,
   getReflectionComment,
+  getReflectionCategory,
   getReflectionDescription,
   getReflectionDescriptionForDisplay,
   getReflectionMemberBadge,

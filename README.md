@@ -19,10 +19,17 @@ export default defineConfig({
       guideContentDir: "content/guide",
       examplesContentDir: "examples",
       apiSourceDir: "src",
+      apiEntryRoute: (path, reflection, category) => {
+        return category
+          ? `${category}/${reflection.name}`
+          : path;
+      },
     }),
   ],
 });
 ```
+
+`apiEntryRoute` is optional. It receives the stable API entry path, the serialized TypeDoc reflection, and the first `@category` value when present. It must return a deterministic path relative to `apiRoute`. Without a custom resolver, entries use a `kind/name` path such as `/api/function/format-date`.
 
 ## Host Content
 
