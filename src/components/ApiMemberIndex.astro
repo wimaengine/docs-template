@@ -91,7 +91,7 @@ function getIndexName(member: TypeDocReflection): string {
 <style>
   .api-type-index {
     position: fixed;
-    top: 0;
+    top: var(--site-header-height);
     right: 0;
     z-index: 800;
     display: grid;
@@ -100,7 +100,7 @@ function getIndexName(member: TypeDocReflection): string {
     width: var(--api-sidebar-width);
     min-width: 0;
     max-width: 100vw;
-    height: 100vh;
+    height: calc(100vh - var(--site-header-height));
     overflow-y: auto;
     overflow-x: clip;
     overflow-anchor: none;

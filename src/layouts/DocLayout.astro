@@ -3,6 +3,7 @@ import SidebarNav from "@components/SidebarNav.astro";
 import PageOutline from "@components/PageOutline.astro";
 import { rootPackageName } from "@configs/project.js";
 import type { NavTab } from "@configs/navigation";
+import { withBase } from "../utils/url.js";
 
 interface HeadingLike {
   depth: number;
@@ -103,6 +104,7 @@ const hasApiPanel = rightPanel === "api";
         --accent-secondary: #cbeafe;
         --code-bg: #090d13;
         --code-text: #f3f4f6;
+        --site-header-height: 3.75rem;
         --site-sidebar-width: 260px;
         --page-outline-width: 230px;
         --api-sidebar-width: 17.5rem;
@@ -125,37 +127,96 @@ const hasApiPanel = rightPanel === "api";
         overflow: hidden;
       }
 
-      .menu-toggle {
+      .site-header {
         position: fixed;
-        top: 0.9rem;
-        left: 0.9rem;
-        width: 2.8rem;
-        height: 2.8rem;
-        display: none;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: var(--site-header-height);
+        display: flex;
         align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 0.32rem;
-        padding: 0;
-        border: 1px solid var(--border);
-        border-radius: 0;
+        padding: 0 1rem;
+        border-bottom: 1px solid var(--border);
         background: var(--panel);
-        color: var(--text);
         z-index: 1000;
       }
 
+      .site-header-inner {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        width: 100%;
+        height: 100%;
+      }
+
+      .site-brand {
+        color: var(--text);
+        font-size: 1rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .site-brand:hover {
+        color: var(--accent);
+      }
+
+      .menu-toggle {
+        position: relative;
+        width: 2.75rem;
+        height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .menu-toggle:hover {
+        background: transparent;
+        color: var(--accent);
+      }
+
+      .menu-toggle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
       .menu-toggle span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
         width: 1.25rem;
         height: 2px;
         background: var(--text);
         border-radius: 0;
+        transition: transform 160ms ease-out, opacity 160ms ease-out;
+      }
+
+      .menu-toggle span:nth-child(1) {
+        transform: translate(-50%, calc(-50% - 0.4rem));
+      }
+
+      .menu-toggle span:nth-child(2) {
+        transform: translate(-50%, -50%);
+      }
+
+      .menu-toggle span:nth-child(3) {
+        transform: translate(-50%, calc(-50% + 0.4rem));
+      }
+
+      .menu-toggle:hover span {
+        background: var(--accent);
       }
 
       #site-sidebar {
         position: fixed;
-        top: 0;
+        top: var(--site-header-height);
         left: 0;
-        height: 100vh;
+        height: calc(100vh - var(--site-header-height));
         width: var(--site-sidebar-width);
         padding: 1.25rem 1rem;
         background: var(--panel);
@@ -165,6 +226,15 @@ const hasApiPanel = rightPanel === "api";
         overflow-y: auto;
         overflow-anchor: none;
         z-index: 900;
+        transition: transform 180ms ease-out;
+      }
+
+      body.sidebar-collapsed #site-sidebar {
+        transform: translateX(-100%);
+      }
+
+      body.sidebar-collapsed main {
+        margin-left: 0;
       }
 
       .tabs-title {
@@ -189,6 +259,7 @@ const hasApiPanel = rightPanel === "api";
         display: flex;
         flex-direction: column;
         gap: 0;
+        margin: 0;
         width: 100%;
       }
 
@@ -202,13 +273,14 @@ const hasApiPanel = rightPanel === "api";
         align-items: center;
         gap: 0.5rem;
         width: 100%;
+        margin: 0;
         padding: 0.65rem 0.8rem;
-        border: 1px solid var(--border);
+        border: 0;
         border-radius: 0;
         text-decoration: none;
         color: var(--text);
-        background: var(--surface-2);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        background: transparent;
+        box-shadow: none;
         font-size: 0.92rem;
         font-weight: 600;
       }
@@ -295,16 +367,14 @@ const hasApiPanel = rightPanel === "api";
       .tabs a:hover,
       .tab-toggle:hover {
         color: var(--accent);
-        border-color: var(--border-strong);
-        background: var(--surface-3);
+        background: transparent;
       }
 
       .tabs a.is-active,
       .tab-toggle.is-active,
       .subtabs a.is-active {
         color: var(--accent);
-        border-color: rgba(125, 211, 252, 0.38);
-        background: rgba(125, 211, 252, 0.08);
+        background: transparent;
       }
 
       .subtabs {
@@ -326,7 +396,7 @@ const hasApiPanel = rightPanel === "api";
         font-size: 0.88rem;
         padding: 0.56rem 0.9rem;
         color: var(--muted);
-        background: var(--surface-3);
+        background: transparent;
       }
 
       .subtabs a:hover {
@@ -337,7 +407,7 @@ const hasApiPanel = rightPanel === "api";
         height: 100vh;
         min-height: 0;
         margin: 0 0 0 var(--site-sidebar-width);
-        padding: 2rem;
+        padding: calc(var(--site-header-height) + 2rem) 2rem 2rem;
         background: transparent;
         border: 0;
         border-radius: 0;
@@ -464,10 +534,6 @@ const hasApiPanel = rightPanel === "api";
       }
 
       @media (max-width: 900px) {
-        .menu-toggle {
-          display: inline-flex;
-        }
-
         #site-sidebar {
           transform: translateX(-100%);
           transition: transform 180ms ease;
@@ -480,7 +546,7 @@ const hasApiPanel = rightPanel === "api";
         }
 
         body.menu-open .menu-toggle span:nth-child(1) {
-          transform: translateY(6px) rotate(45deg);
+          transform: translate(-50%, -50%) rotate(45deg);
         }
 
         body.menu-open .menu-toggle span:nth-child(2) {
@@ -488,7 +554,7 @@ const hasApiPanel = rightPanel === "api";
         }
 
         body.menu-open .menu-toggle span:nth-child(3) {
-          transform: translateY(-6px) rotate(-45deg);
+          transform: translate(-50%, -50%) rotate(-45deg);
         }
 
         .tabs {
@@ -497,7 +563,28 @@ const hasApiPanel = rightPanel === "api";
 
         main {
           margin: 0;
-          padding: 4.8rem 2rem 2rem;
+          padding: calc(var(--site-header-height) + 1.05rem) 2rem 2rem;
+        }
+      }
+
+      @media (min-width: 901px) {
+        body:not(.sidebar-collapsed) .menu-toggle span:nth-child(1) {
+          transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        body:not(.sidebar-collapsed) .menu-toggle span:nth-child(2) {
+          opacity: 0;
+        }
+
+        body:not(.sidebar-collapsed) .menu-toggle span:nth-child(3) {
+          transform: translate(-50%, -50%) rotate(-45deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .menu-toggle span,
+        #site-sidebar {
+          transition: none;
         }
       }
 
@@ -518,18 +605,23 @@ const hasApiPanel = rightPanel === "api";
         hasApiPanel && "has-api-panel"
       ]}
     >
-      <button
-        class="menu-toggle"
-        id="menu-toggle"
-        type="button"
-        aria-label="Toggle menu"
-        aria-expanded="false"
-        aria-controls="site-sidebar"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
+      <header class="site-header">
+        <div class="site-header-inner">
+          <button
+            class="menu-toggle"
+            id="menu-toggle"
+            type="button"
+            aria-label="Toggle navigation"
+            aria-expanded="true"
+            aria-controls="site-sidebar"
+          >
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </button>
+          <a class="site-brand" href={withBase("/")}>{rootPackageName}</a>
+        </div>
+      </header>
       <aside id="site-sidebar" aria-label="Sidebar navigation">
         <p class="tabs-title">Navigation</p>
         {tabs.length > 0 && <SidebarNav tabs={tabs} />}
@@ -543,10 +635,68 @@ const hasApiPanel = rightPanel === "api";
     </div>
     <script>
       const button = document.getElementById("menu-toggle");
-      button?.addEventListener("click", () => {
-        const open = document.body.classList.toggle("menu-open");
+      const desktopViewport = window.matchMedia("(min-width: 901px)");
+      const desktopSidebarStorageKey = "site-sidebar-collapsed";
+
+      const getStoredDesktopSidebarState = () => {
+        try {
+          return window.localStorage.getItem(desktopSidebarStorageKey) === "true";
+        } catch {
+          return false;
+        }
+      };
+
+      const setStoredDesktopSidebarState = (collapsed) => {
+        try {
+          window.localStorage.setItem(desktopSidebarStorageKey, String(collapsed));
+        } catch {
+          // Ignore storage failures.
+        }
+      };
+
+      const updateMenuButton = () => {
+        if (!button) {
+          return;
+        }
+
+        const isDesktop = desktopViewport.matches;
+        const open = isDesktop
+          ? !document.body.classList.contains("sidebar-collapsed")
+          : document.body.classList.contains("menu-open");
+
         button.setAttribute("aria-expanded", open ? "true" : "false");
+        button.setAttribute(
+          "aria-label",
+          `${isDesktop ? (open ? "Collapse" : "Expand") : (open ? "Close" : "Open")} navigation`
+        );
+      };
+
+      const syncSidebarMode = () => {
+        if (desktopViewport.matches) {
+          document.body.classList.remove("menu-open");
+          document.body.classList.toggle("sidebar-collapsed", getStoredDesktopSidebarState());
+        } else {
+          document.body.classList.remove("sidebar-collapsed");
+          document.body.classList.remove("menu-open");
+        }
+
+        updateMenuButton();
+      };
+
+      button?.addEventListener("click", () => {
+        if (desktopViewport.matches) {
+          const collapsed = document.body.classList.toggle("sidebar-collapsed");
+          setStoredDesktopSidebarState(collapsed);
+        } else {
+          document.body.classList.toggle("menu-open");
+        }
+
+        updateMenuButton();
       });
+
+      desktopViewport.addEventListener("change", syncSidebarMode);
+      syncSidebarMode();
+
       const persistScrollPosition = (element, storageKey) => {
         let saveFrame = 0;
 

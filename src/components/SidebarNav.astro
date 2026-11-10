@@ -64,7 +64,7 @@ function renderTab(tab: NavTab, level: number, index: number): RenderedTab {
   const open = active;
   const childHtml =
     children.length > 0
-      ? `<ul class="${level === 0 ? "tabs" : "subtabs"}"${tab.href && !open ? " hidden" : ""}>${children
+      ? `<ul class="subtabs"${tab.href && !open ? " hidden" : ""}>${children
           .map((child) => child.html)
           .join("")}</ul>`
       : "";

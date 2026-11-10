@@ -70,14 +70,14 @@ const outlineHtml = outline.length > 0
 <style is:global>
   .page-outline {
     position: fixed;
-    top: 0;
+    top: var(--site-header-height);
     right: 0;
     z-index: 800;
     display: grid;
     align-content: start;
     gap: 0;
     width: var(--page-outline-width);
-    height: 100vh;
+    height: calc(100vh - var(--site-header-height));
     overflow-y: auto;
     overflow-anchor: none;
     padding: 1.25rem 1rem;
