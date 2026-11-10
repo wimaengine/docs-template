@@ -628,7 +628,7 @@ const hasApiPanel = rightPanel === "api";
         <slot name="sidebar" />
       </aside>
       {hasPageOutline && <PageOutline headings={headings} />}
-      <main>
+      <main id="main-content" tabindex="-1" autofocus>
         <slot />
       </main>
       {hasApiPanel && <slot name="right-panel" />}
