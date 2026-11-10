@@ -172,7 +172,7 @@ function stripGuideOrderPrefix(value) {
 
 function getGuideEntryRoute(entry) {
   const raw = entry.slug ?? entry.id;
-  const cleaned = raw.replace(/\.md$/, "");
+  const cleaned = raw.replace(/\.[^/.]+$/, "");
 
   if (cleaned === "index") {
     return getGuideRoutePath();

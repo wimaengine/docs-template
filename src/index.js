@@ -1,10 +1,12 @@
 import path from "node:path";
 import { satteri } from "@astrojs/markdown-satteri";
 import { rootPackageDevUrl, rootPackageName, projectRootDir, websiteRootDir } from "./config/project.js";
+import { clearLinks } from "./config/link-map.js";
 import { setWebsiteConfig } from "./config/site.js";
 import { markdownPlugins } from "./plugins/markdown-satteri.js";
 
 export function website(options = {}) {
+  clearLinks();
   setWebsiteConfig(options);
 
   return {

@@ -1,5 +1,5 @@
 import { withBase } from "../utils/url.js";
-import { resolveSiteLink } from "../config/links.js";
+import { resolveGuideLink } from "../utils/guide-links.js";
 
 const alertLabels = {
   note: "Note",
@@ -18,9 +18,7 @@ function rewriteBaseUrl(node, ctx) {
       return;
     }
 
-    const resolvedUrl = resolveSiteLink(node.url, {
-      sourcePath: ctx.fileURL
-    });
+    const resolvedUrl = resolveGuideLink(node.url, ctx.fileURL);
     ctx.setProperty(node, "url", withBase(resolvedUrl));
   }
 }

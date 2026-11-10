@@ -1,6 +1,5 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { resolveSiteLink } from "./links.js";
 import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
 import { getReflectionKindLabel } from "../utils/typedoc.js";
 
@@ -14,7 +13,7 @@ function stripGuideOrderPrefix(value) {
 }
 
 function normalizeGuideNavigationRoute(value, guideRootPath) {
-  const withoutExtension = value.replace(/\.md$/, "");
+  const withoutExtension = value.replace(/\.[^/.]+$/, "");
   let trimmed = withoutExtension.replace(/\/+$/, "") || "/";
 
   if (trimmed === "/index") {
@@ -35,10 +34,8 @@ function normalizeGuideNavigationRoute(value, guideRootPath) {
 }
 
 function resolveGuideOrderHref(href, guideRootPath) {
-  return normalizeGuideNavigationRoute(
-    resolveSiteLink(href, { currentPath: `${guideRootPath}/` }),
-    guideRootPath
-  );
+  const pathname = new URL(href, `https://docs.invalid${guideRootPath}/`).pathname;
+  return normalizeGuideNavigationRoute(pathname, guideRootPath);
 }
 
 function parseReadingOrder(raw, guideRootPath) {

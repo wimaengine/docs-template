@@ -379,8 +379,6 @@ const examples = defineCollection({
     async load({ store, parseData, watcher, logger, meta, generateDigest }) {
       const examplesRoot = getExamplesContentDir();
 
-      addExampleLink();
-
       await syncExampleEntries({
         examplesRoot,
         parseData,
@@ -439,8 +437,6 @@ const api = defineCollection({
     async load({ store, parseData }) {
       const entries = await loadApiEntries();
 
-      addApiLink();
-
       store.clear();
 
       for (const entry of entries) {
@@ -468,7 +464,6 @@ const guide = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: getGuideContentDir,
     getPattern: () => "**/*.md",
-    onStart: () => addGuideLink(),
     onEntry: addGuideLink
   }),
   schema: z.object({
@@ -480,7 +475,6 @@ const intro = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: () => path.dirname(getIntroContentPath()),
     getPattern: () => path.basename(getIntroContentPath()),
-    onStart: () => addIntroLink(),
     onEntry: addIntroLink
   }),
   schema: z.object({

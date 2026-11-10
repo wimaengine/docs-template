@@ -1,8 +1,36 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { projectRootDir } from "./project.js";
 import { getMdnTypeUrl } from "../utils/mdn.js";
 
-const links = { __proto__: null };
+const linkMapPath = path.join(projectRootDir, ".astro", "link-map.json");
+
+function createLinks() {
+  return { __proto__: null };
+}
+
+function readLinks() {
+  try {
+    return Object.assign(createLinks(), JSON.parse(readFileSync(linkMapPath, "utf8")));
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return createLinks();
+    }
+
+    throw error;
+  }
+}
+
+function writeLinks(links) {
+  mkdirSync(path.dirname(linkMapPath), { recursive: true });
+  const temporaryPath = `${linkMapPath}.${process.pid}.tmp`;
+  writeFileSync(temporaryPath, `${JSON.stringify(links, null, 2)}\n`, "utf8");
+  renameSync(temporaryPath, linkMapPath);
+}
+
+export function clearLinks() {
+  writeLinks(createLinks());
+}
 
 function normalizeSlashes(value) {
   return value.replace(/\\/g, "/");
@@ -22,10 +50,6 @@ function getProjectRelativePath(value) {
 }
 
 function normalizeAlias(value) {
-  if (typeof value !== "string") {
-    return "";
-  }
-
   let alias = normalizeSlashes(value.trim());
   if (!alias) {
     return "";
@@ -41,18 +65,17 @@ function normalizeAlias(value) {
   return alias === "." ? "" : alias;
 }
 
-function isExternalLink(value) {
-  return /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value);
-}
-
 export function addLink(alias, route) {
   const key = normalizeAlias(alias);
-  if (!key || typeof route !== "string") {
+  if (!key) {
     return;
   }
 
+  const links = readLinks();
+
   if (!Object.prototype.hasOwnProperty.call(links, key)) {
     links[key] = route;
+    writeLinks(links);
     return;
   }
 
@@ -61,9 +84,11 @@ export function addLink(alias, route) {
     // An ambiguous source/name alias must not silently link to the wrong page.
     links[key] = null;
   }
+
+  writeLinks(links);
 }
 
-function getRegisteredLink(alias) {
+function getRegisteredLink(alias, links) {
   const key = normalizeAlias(alias);
   if (!key || !Object.prototype.hasOwnProperty.call(links, key)) {
     return undefined;
@@ -73,42 +98,20 @@ function getRegisteredLink(alias) {
   return route === null ? undefined : route;
 }
 
-function hasRegisteredLink(alias) {
+function hasRegisteredLink(alias, links) {
   const key = normalizeAlias(alias);
-  return Boolean(key) && Object.prototype.hasOwnProperty.call(links, key);
+  return key && Object.prototype.hasOwnProperty.call(links, key);
 }
 
-export function getLink(alias, basePath) {
-  const candidates = [alias];
-
-  if (
-    typeof alias === "string" &&
-    typeof basePath === "string" &&
-    basePath !== "" &&
-    !alias.startsWith("/") &&
-    !isExternalLink(alias)
-  ) {
-    try {
-      const base = basePath.endsWith("/") ? basePath : `${basePath}/`;
-      candidates.unshift(new URL(alias, `https://docs.invalid${base}`).pathname);
-    } catch {
-      // Fall through to the direct alias lookup.
-    }
+export function getLink(alias) {
+  const links = readLinks();
+  const route = getRegisteredLink(alias, links);
+  if (route) {
+    return route;
   }
 
-  for (const candidate of candidates) {
-    const route = getRegisteredLink(candidate);
-    if (route) {
-      return route;
-    }
-  }
-
-  for (const candidate of candidates) {
-    if (hasRegisteredLink(candidate)) {
-      continue;
-    }
-
-    const mdnRoute = getMdnTypeUrl(candidate);
+  if (!hasRegisteredLink(alias, links)) {
+    const mdnRoute = getMdnTypeUrl(alias);
     if (mdnRoute) {
       return mdnRoute;
     }

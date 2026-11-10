@@ -37,7 +37,7 @@ const kindLabels = new Map([
 ]);
 
 function normalizeText(value) {
-  return String(value ?? "")
+  return (value ?? "")
     .replace(/\r\n?/g, "\n")
     .split("\n")
     .map((line) => line.trim())
@@ -51,7 +51,7 @@ function normalizeInlineText(value) {
 }
 
 function normalizeMarkdown(value) {
-  return String(value ?? "")
+  return (value ?? "")
     .replace(/\r\n?/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -59,7 +59,7 @@ function normalizeMarkdown(value) {
 
 function getReflectionKindName(kind) {
   const name = ReflectionKind[kind];
-  return typeof name === "string" ? name : `Kind ${kind}`;
+  return name ?? `Kind ${kind}`;
 }
 
 function getReflectionMemberBadge(kind) {
@@ -101,7 +101,7 @@ function displayPartsToText(parts) {
   }
 
   return normalizeText((parts ?? [])
-    .map((part) => typeof part === "string" ? part : String(part?.text ?? ""))
+    .map((part) => typeof part === "string" ? part : part?.text ?? "")
     .join(""));
 }
 
@@ -111,12 +111,12 @@ function displayPartsToRawText(parts) {
   }
 
   return (parts ?? [])
-    .map((part) => typeof part === "string" ? part : String(part?.text ?? ""))
+    .map((part) => typeof part === "string" ? part : part?.text ?? "")
     .join("");
 }
 
 function escapeMarkdownLinkLabel(value) {
-  return String(value ?? "")
+  return (value ?? "")
     .replaceAll("\\", "\\\\")
     .replaceAll("`", "\\`")
     .replaceAll("*", "\\*")
@@ -127,56 +127,29 @@ function escapeMarkdownLinkLabel(value) {
 }
 
 function escapeMarkdownCode(value) {
-  return String(value ?? "").replaceAll("`", "\\`");
-}
-
-function getTargetId(target) {
-  if (typeof target === "number" && Number.isFinite(target)) {
-    return target;
-  }
-
-  if (typeof target === "string" && /^\d+$/.test(target)) {
-    return Number(target);
-  }
-
-  if (target && typeof target === "object" && Number.isFinite(target.id)) {
-    return target.id;
-  }
-
-  return undefined;
+  return (value ?? "").replaceAll("`", "\\`");
 }
 
 function getTargetName(target) {
-  if (!target || typeof target !== "object") {
-    return "";
-  }
-
-  return target.name ?? target.qualifiedName ?? "";
+  return target?.name ?? target?.qualifiedName ?? "";
 }
 
 function getTargetNames(target) {
-  if (!target || typeof target !== "object") {
-    return [];
-  }
-
-  return [target.name, target.qualifiedName]
-    .map((value) => String(value ?? "").trim())
-    .filter(Boolean);
+  return [target?.name, target?.qualifiedName]
+    .filter(Boolean)
+    .map((value) => value.trim());
 }
 
 function resolveMarkdownLink(part) {
   const target = part?.target;
-  const targetId = getTargetId(target);
-  const targetValue = typeof target === "string" ? target.trim() : "";
+  const targetValue = target?.trim?.() ?? "";
 
   const candidates = [
-    targetId === undefined ? "" : String(targetId),
     targetValue,
     ...getTargetNames(target),
     part?.tsLinkText,
     part?.text
   ]
-    .map((value) => String(value ?? "").trim())
     .filter(Boolean);
 
   for (const candidate of candidates) {
@@ -213,7 +186,7 @@ function displayPartsToMarkdown(parts) {
       }
 
       if (part?.kind === "inline-tag") {
-        const label = String(part.tsLinkText ?? part.text ?? getTargetName(part.target) ?? "link").trim();
+        const label = (part.tsLinkText ?? part.text ?? getTargetName(part.target) ?? "link").trim();
         const href = resolveMarkdownLink(part);
         const display = part.tag === "@linkcode"
           ? `\`${escapeMarkdownCode(label)}\``
@@ -224,7 +197,7 @@ function displayPartsToMarkdown(parts) {
 
       // TypeDoc already stores examples and @default blocks as Markdown code
       // fences. Preserve those fences instead of wrapping them a second time.
-      return String(part?.text ?? "");
+      return part?.text ?? "";
     })
     .join("");
 
@@ -302,7 +275,7 @@ function formatLiteralValue(value) {
     return JSON.stringify(value);
   }
 
-  return String(value);
+  return `${value}`;
 }
 
 function formatType(type) {
@@ -367,7 +340,7 @@ function formatType(type) {
         return name;
       }
 
-      return type.type ? String(type.type) : "unknown";
+      return type.type ? type.type : "unknown";
     }
   }
 }
@@ -424,8 +397,8 @@ function getReturnDescriptionMarkdown(reflection, signature) {
 
 function getSourceOrder(reflection) {
   const source = reflection?.sources?.[0];
-  const line = Number.isFinite(source?.line) ? source.line : Number.MAX_SAFE_INTEGER;
-  const character = Number.isFinite(source?.character) ? source.character : 0;
+  const line = source?.line ?? Number.MAX_SAFE_INTEGER;
+  const character = source?.character ?? 0;
   return line * 1000000 + character;
 }
 
