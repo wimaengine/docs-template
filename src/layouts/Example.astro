@@ -1,6 +1,7 @@
 ---
 import { withBase } from "../utils/url.js";
 import { buildImportMap } from "../utils/import-map.js";
+import { getWebsiteConfig, getWebsiteThemeStyles } from "../config/site.js";
 
 interface Props {
   source: string;
@@ -11,6 +12,8 @@ const { source, title = "Example" } = Astro.props;
 const isProd = import.meta.env.PROD;
 
 const importMap = buildImportMap(isProd);
+const { theme } = getWebsiteConfig();
+const themeStyles = getWebsiteThemeStyles(theme);
 
 const rewriteAssetLiterals = (script: string): string =>
   script.replace(
@@ -23,24 +26,20 @@ const runnerScript = isProd ? rewriteAssetLiterals(source) : source;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme={theme.default}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
+    <style is:global set:html={themeStyles}></style>
     <style is:global>
-      :root {
-        color-scheme: dark;
-        --bg: #05070a;
-      }
-
       html,
       body {
         margin: 0;
         width: 100%;
         height: 100%;
         background: var(--bg);
-        color: #eef2f7;
+        color: var(--text);
         overflow: hidden;
       }
 

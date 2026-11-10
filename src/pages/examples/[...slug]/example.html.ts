@@ -1,5 +1,6 @@
 import { getCollection } from "astro:content";
 import type { APIRoute } from "astro";
+import { getWebsiteConfig, getWebsiteThemeStyles } from "../../../config/site.js";
 import { buildImportMap } from "../../../utils/import-map.js";
 import { withBase } from "../../../utils/url.js";
 
@@ -39,29 +40,31 @@ function escapeHtml(value: string): string {
   });
 }
 
-function buildExampleHtml(title: string, importMap: string, source: string): string {
+function buildExampleHtml(
+  title: string,
+  importMap: string,
+  source: string,
+  themeDefault: string,
+  themeStyles: string
+): string {
   const runnerScript = source.replace(/<\/script/gi, "<\\/script");
   const safeImportMap = importMap.replace(/<\/script/gi, "<\\/script");
 
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="${escapeHtml(themeDefault)}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
+    <style>${themeStyles}</style>
     <style>
-      :root {
-        color-scheme: dark;
-        --bg: #05070a;
-      }
-
       html,
       body {
         margin: 0;
         width: 100%;
         height: 100%;
         background: var(--bg);
-        color: #eef2f7;
+        color: var(--text);
         overflow: hidden;
       }
 
@@ -121,10 +124,20 @@ export const GET: APIRoute = async ({ params }) => {
   const isProd = import.meta.env.PROD;
   const importMap = buildImportMap(isProd);
   const source = isProd ? rewriteAssetLiterals(exampleEntry.data.source) : exampleEntry.data.source;
+  const { theme } = getWebsiteConfig();
 
-  return new Response(buildExampleHtml(exampleEntry.data.title, importMap, source), {
-    headers: {
-      "content-type": "text/html; charset=utf-8"
+  return new Response(
+    buildExampleHtml(
+      exampleEntry.data.title,
+      importMap,
+      source,
+      theme.default,
+      getWebsiteThemeStyles(theme)
+    ),
+    {
+      headers: {
+        "content-type": "text/html; charset=utf-8"
+      }
     }
-  });
+  );
 };

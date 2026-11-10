@@ -4,6 +4,7 @@ import SidebarNav from "@components/SidebarNav.astro";
 import PageOutline from "@components/PageOutline.astro";
 import { rootPackageName } from "@configs/project.js";
 import type { NavTab } from "@configs/navigation";
+import { getWebsiteConfig, getWebsiteThemeStyles } from "@configs/site.js";
 import { withBase } from "../utils/url.js";
 
 interface HeadingLike {
@@ -22,15 +23,18 @@ interface Props {
 const { title = rootPackageName, tabs = [], headings = [], rightPanel } = Astro.props as Props;
 const hasPageOutline = headings.some((heading) => heading.depth > 1);
 const hasApiPanel = rightPanel === "api";
+const { theme } = getWebsiteConfig();
+const themeStyles = getWebsiteThemeStyles(theme);
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme={theme.default}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+    <style is:global set:html={themeStyles}></style>
     <style is:global>
       .markdown-alert {
         padding: 1rem 1.2rem;
@@ -92,19 +96,6 @@ const hasApiPanel = rightPanel === "api";
     </style>
     <style is:global>
       :root {
-        color-scheme: dark;
-        --bg: #05070a;
-        --panel: #0b1118;
-        --surface-2: #101721;
-        --surface-3: #151d28;
-        --text: #eef2f7;
-        --muted: #a8b1bd;
-        --border: #243043;
-        --border-strong: #314055;
-        --accent: #7dd3fc;
-        --accent-secondary: #cbeafe;
-        --code-bg: #090d13;
-        --code-text: #f3f4f6;
         --site-header-height: 3.75rem;
         --site-sidebar-width: 260px;
         --page-outline-width: 230px;

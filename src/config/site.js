@@ -26,6 +26,45 @@ function setRegisteredApiEntryRoute(routeResolver) {
   getWebsiteConfigRegistry()?.set(projectRootDir, routeResolver);
 }
 
+const defaultThemeColors = Object.freeze({
+  background: "#05070a",
+  panel: "#0b1118",
+  surface: "#101721",
+  surfaceRaised: "#151d28",
+  text: "#eef2f7",
+  muted: "#a8b1bd",
+  border: "#243043",
+  borderStrong: "#314055",
+  accent: "#7dd3fc",
+  accentSecondary: "#cbeafe",
+  codeBackground: "#090d13",
+  codeText: "#f3f4f6"
+});
+
+const defaultWebsiteTheme = Object.freeze({
+  default: "default",
+  schemes: Object.freeze({
+    default: Object.freeze({
+      colors: defaultThemeColors
+    })
+  })
+});
+
+const themeVariableNames = Object.freeze({
+  background: "--bg",
+  panel: "--panel",
+  surface: "--surface-2",
+  surfaceRaised: "--surface-3",
+  text: "--text",
+  muted: "--muted",
+  border: "--border",
+  borderStrong: "--border-strong",
+  accent: "--accent",
+  accentSecondary: "--accent-secondary",
+  codeBackground: "--code-bg",
+  codeText: "--code-text"
+});
+
 function defaultApiEntryRoute(_path, reflection) {
   const kind = getReflectionKindSlug(reflection?.kind);
   const name = reflection?.name ?? "entry";
@@ -36,6 +75,7 @@ const defaultWebsiteConfig = Object.freeze({
   guideRoute: "/guide",
   examplesRoute: "/examples",
   apiRoute: "/api",
+  theme: defaultWebsiteTheme,
   apiEntryRoute: defaultApiEntryRoute,
   guideContentDir: "content/guide",
   examplesContentDir: "examples",
@@ -97,11 +137,40 @@ function resolveApiEntryRoute(options, registeredApiEntryRoute) {
   return registeredApiEntryRoute ?? defaultWebsiteConfig.apiEntryRoute;
 }
 
+function resolveTheme(options = {}) {
+  const themeOptions = options.theme ?? {};
+  const schemeOptions = themeOptions.schemes ?? {};
+  const schemeNames = Object.keys(schemeOptions);
+  const names = schemeNames.length > 0 ? schemeNames : Object.keys(defaultWebsiteTheme.schemes);
+  const schemes = {};
+
+  for (const name of names) {
+    const baseScheme = defaultWebsiteTheme.schemes.default;
+    const scheme = schemeOptions[name] ?? {};
+
+    schemes[name] = Object.freeze({
+      colors: Object.freeze({
+        ...baseScheme.colors,
+        ...(scheme.colors ?? {})
+      })
+    });
+  }
+
+  const requestedDefault = themeOptions.default ?? defaultWebsiteTheme.default;
+  const defaultScheme = schemes[requestedDefault] ? requestedDefault : names[0];
+
+  return Object.freeze({
+    default: defaultScheme,
+    schemes: Object.freeze(schemes)
+  });
+}
+
 function resolveWebsiteConfig(options = {}, { apiEntryRoute: registeredApiEntryRoute } = {}) {
   const config = {
     guideRoute: normalizeRoutePath(options.guideRoute, defaultWebsiteConfig.guideRoute),
     examplesRoute: normalizeRoutePath(options.examplesRoute, defaultWebsiteConfig.examplesRoute),
     apiRoute: normalizeRoutePath(options.apiRoute, defaultWebsiteConfig.apiRoute),
+    theme: resolveTheme(options),
     apiEntryRoute: resolveApiEntryRoute(options, registeredApiEntryRoute),
     guideContentDir: normalizeContentPath(options.guideContentDir, defaultWebsiteConfig.guideContentDir),
     examplesContentDir: normalizeContentPath(options.examplesContentDir, defaultWebsiteConfig.examplesContentDir),
@@ -118,6 +187,21 @@ function resolveWebsiteConfig(options = {}, { apiEntryRoute: registeredApiEntryR
   }
 
   return Object.freeze(config);
+}
+
+function getWebsiteThemeStyles(theme) {
+  return Object.entries(theme.schemes)
+    .map(([name, scheme]) => {
+      const selector = name === theme.default
+        ? `:root,\n:root[data-theme="${name}"]`
+        : `:root[data-theme="${name}"]`;
+      const variables = Object.entries(scheme.colors)
+        .map(([colorName, value]) => `  ${themeVariableNames[colorName]}: ${value};`)
+        .join("\n");
+
+      return `${selector} {\n${variables}\n}`;
+    })
+    .join("\n\n");
 }
 
 function joinRoutePath(...segments) {
@@ -273,6 +357,7 @@ export {
   getGuideRoutePath,
   getIntroContentPath,
   getWebsiteConfig,
+  getWebsiteThemeStyles,
   joinRoutePath,
   resolveWebsiteConfig,
   routeToParam,

@@ -16,6 +16,23 @@ export default defineConfig({
       guideRoute: "/guide",
       examplesRoute: "/examples",
       apiRoute: "/api",
+      theme: {
+        default: "ocean",
+        schemes: {
+          ocean: {
+            colors: {
+              background: "#05070a",
+              accent: "#7dd3fc"
+            }
+          },
+          forest: {
+            colors: {
+              background: "#071a12",
+              accent: "#86efac"
+            }
+          }
+        }
+      },
       guideContentDir: "content/guide",
       examplesContentDir: "examples",
       apiSourceDir: "src",
@@ -30,6 +47,8 @@ export default defineConfig({
 ```
 
 `apiEntryRoute` is optional. It receives the stable API entry path, the serialized TypeDoc reflection, and the first `@category` value when present. It must return a deterministic path relative to `apiRoute`. Without a custom resolver, entries use a `kind/name` path such as `/api/function/formatDate`, preserving the TypeDoc reflection name exactly.
+
+Theme scheme names are arbitrary identifiers. Each scheme writes the template's global CSS variables, and missing colors use the default values. Color values must be hexadecimal strings. Set `theme.default` to choose the scheme rendered on the document root.
 
 ## Host Content
 

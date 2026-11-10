@@ -2,11 +2,45 @@ export interface WebsiteConfigOptions {
   guideRoute?: string;
   examplesRoute?: string;
   apiRoute?: string;
+  theme?: WebsiteThemeOptions;
   apiEntryRoute?: ApiEntryRouteResolver;
   guideContentDir?: string;
   examplesContentDir?: string;
   apiSourceDir?: string;
   introContentPath?: string;
+}
+
+export interface WebsiteThemeColors {
+  background: `#${string}`;
+  panel: `#${string}`;
+  surface: `#${string}`;
+  surfaceRaised: `#${string}`;
+  text: `#${string}`;
+  muted: `#${string}`;
+  border: `#${string}`;
+  borderStrong: `#${string}`;
+  accent: `#${string}`;
+  accentSecondary: `#${string}`;
+  codeBackground: `#${string}`;
+  codeText: `#${string}`;
+}
+
+export interface WebsiteThemeSchemeOptions {
+  colors?: Partial<WebsiteThemeColors>;
+}
+
+export interface WebsiteThemeOptions {
+  default?: string;
+  schemes?: Record<string, WebsiteThemeSchemeOptions>;
+}
+
+export interface WebsiteThemeScheme {
+  colors: WebsiteThemeColors;
+}
+
+export interface WebsiteTheme {
+  default: string;
+  schemes: Record<string, WebsiteThemeScheme>;
 }
 
 export interface ApiRouteReflection {
@@ -37,6 +71,7 @@ export interface WebsiteConfig {
   guideRoute: string;
   examplesRoute: string;
   apiRoute: string;
+  theme: WebsiteTheme;
   apiEntryRoute: ApiEntryRouteResolver;
   guideContentDir: string;
   examplesContentDir: string;
@@ -47,6 +82,7 @@ export interface WebsiteConfig {
 export declare const defaultWebsiteConfig: Readonly<WebsiteConfig>;
 export declare function setWebsiteConfig(options?: WebsiteConfigOptions): Readonly<WebsiteConfig>;
 export declare function getWebsiteConfig(): Readonly<WebsiteConfig>;
+export declare function getWebsiteThemeStyles(theme: WebsiteTheme): string;
 export declare function getGuideEntryRoute(entry: { id: string; slug?: string }): string;
 export declare function getGuideRoutePath(...segments: string[]): string;
 export declare function getExamplesRoutePath(...segments: string[]): string;
