@@ -47,6 +47,7 @@ export interface WebsiteConfig {
 export declare const defaultWebsiteConfig: Readonly<WebsiteConfig>;
 export declare function setWebsiteConfig(options?: WebsiteConfigOptions): Readonly<WebsiteConfig>;
 export declare function getWebsiteConfig(): Readonly<WebsiteConfig>;
+export declare function getGuideEntryRoute(entry: { id: string; slug?: string }): string;
 export declare function getGuideRoutePath(...segments: string[]): string;
 export declare function getExamplesRoutePath(...segments: string[]): string;
 export declare function getApiRoutePath(...segments: string[]): string;

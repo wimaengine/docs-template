@@ -5,6 +5,7 @@ import {
   getApiEntryRoute,
   getApiRoutePath,
   getExamplesRoutePath,
+  getGuideEntryRoute,
   getGuideRoutePath,
   routeToParam
 } from "@configs/site.js";
@@ -77,7 +78,6 @@ function splitCamelCase(value: string): string {
 }
 
 export async function getStaticPaths() {
-  const cleanGuideSlug = (value: string) => value.replace(/\.md$/, "");
   const [guideEntriesForPaths, exampleEntriesForPaths, apiEntriesForPaths] = await Promise.all([
     getCollection("guide"),
     getCollection("examples"),
@@ -91,14 +91,14 @@ export async function getStaticPaths() {
 
   return [
     ...guideEntriesForPaths.map((entry) => {
-      const cleaned = cleanGuideSlug(entry.slug ?? entry.id);
-      return cleaned === "index"
+      const route = getGuideEntryRoute(entry);
+      return route === guideRootForPaths
         ? {
             params: { page: routeToParam(guideRootForPaths) },
             props: { kind: "guide-index", entry }
           }
         : {
-            params: { page: routeToParam(getGuideRoutePath(cleaned)) },
+            params: { page: routeToParam(route) },
             props: { kind: "guide-entry", entry }
           };
     }),

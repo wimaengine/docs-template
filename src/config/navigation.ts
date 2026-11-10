@@ -1,6 +1,6 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
+import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath, rewriteSiteRoute } from "./site.js";
 import { getReflectionKindLabel } from "../utils/typedoc.js";
 
 export interface NavTab {
@@ -36,12 +36,6 @@ interface ReadingOrderEntry {
   sourceOrder: number;
 }
 
-interface OrderedGuideEntry {
-  entry: GuideCollectionEntry;
-  index: number;
-  route: string;
-}
-
 interface ApiCollectionEntry {
   id: string;
   data: {
@@ -67,11 +61,58 @@ interface ApiNavigationNode {
   children: Map<string, ApiNavigationNode>;
 }
 
+interface GuideNavigationEntry {
+  label: string;
+  href: string;
+}
+
+interface GuideNavigationNode {
+  segment: string;
+  entry: GuideNavigationEntry | null;
+  children: Map<string, GuideNavigationNode>;
+  order: number;
+}
+
 function cleanLabel(value: string): string {
   return value.replace(/^\s*\d+[.)-]?\s+/, "").trim();
 }
 
-function parseReadingOrder(raw: string): ReadingOrderEntry[] {
+function stripGuideOrderPrefix(value: string): string {
+  const stripped = value.replace(/^\d+(?:[.)_-]|\s)+/, "");
+  return stripped || value;
+}
+
+function normalizeGuideNavigationRoute(value: string, guideRootPath: string): string {
+  const withoutExtension = value.replace(/\.md$/, "");
+  let trimmed = withoutExtension.replace(/\/+$/, "") || "/";
+
+  if (trimmed === "/index") {
+    return "/";
+  }
+
+  if (trimmed.endsWith("/index")) {
+    trimmed = trimmed.slice(0, -"/index".length);
+  }
+
+  const prefix = `${guideRootPath}/`;
+  if (!trimmed.startsWith(prefix)) {
+    return trimmed;
+  }
+
+  const segments = trimmed.slice(prefix.length).split("/").filter(Boolean).map(stripGuideOrderPrefix);
+  return `${guideRootPath}/${segments.join("/")}`;
+}
+
+function resolveGuideOrderHref(href: string, guideRootPath: string): string {
+  try {
+    const resolved = new URL(href, `https://docs.invalid${guideRootPath}/`);
+    return normalizeGuideNavigationRoute(rewriteSiteRoute(resolved.pathname), guideRootPath);
+  } catch {
+    return normalizeGuideNavigationRoute(rewriteSiteRoute(href), guideRootPath);
+  }
+}
+
+function parseReadingOrder(raw: string, guideRootPath: string): ReadingOrderEntry[] {
   const entries: ReadingOrderEntry[] = [];
   const lines = raw.split(/\r?\n/);
   let inReadingOrder = false;
@@ -81,11 +122,12 @@ function parseReadingOrder(raw: string): ReadingOrderEntry[] {
     const headingMatch = line.match(/^##\s+(.*)$/);
     if (headingMatch) {
       const headingText = cleanLabel(headingMatch[1].trim());
-      if (inReadingOrder && headingText !== "Reading Order") {
+      const isOrderHeading = headingText === "Reading Order" || headingText === "Recommended Order";
+      if (inReadingOrder && !isOrderHeading) {
         break;
       }
 
-      inReadingOrder = headingText === "Reading Order";
+      inReadingOrder = isOrderHeading;
       continue;
     }
 
@@ -93,14 +135,14 @@ function parseReadingOrder(raw: string): ReadingOrderEntry[] {
       continue;
     }
 
-    const itemMatch = line.match(/^\s*(\d+)\.\s+\[(.+?)\]\((.+?)\)\s*$/);
+    const itemMatch = line.match(/^\s*(?:(\d+)\.|[-*])\s+\[(.+?)\]\((.+?)\)\s*$/);
     if (!itemMatch) {
       continue;
     }
 
     const [, order, , href] = itemMatch;
     entries.push({
-      href: rewriteSiteRoute(href).replace(/\/+$/, ""),
+      href: resolveGuideOrderHref(href, guideRootPath),
       order: Number.parseInt(order, 10) || sourceOrder,
       sourceOrder
     });
@@ -108,12 +150,6 @@ function parseReadingOrder(raw: string): ReadingOrderEntry[] {
   }
 
   return entries.sort((a, b) => a.order - b.order || a.sourceOrder - b.sourceOrder);
-}
-
-function getGuideRoute(entry: { id: string; slug?: string }): string {
-  const raw = entry.slug ?? entry.id;
-  const cleaned = raw.replace(/\.md$/, "");
-  return cleaned === "index" ? getGuideRoutePath() : getGuideRoutePath(cleaned);
 }
 
 function getApiBadge(kind: number): { letter: string; name: string } {
@@ -138,6 +174,27 @@ function getApiRouteSegments(route: string, apiRootPath: string): string[] {
   }
 
   return route.slice(prefix.length).split("/").filter(Boolean);
+}
+
+function getGuideRouteSegments(route: string, guideRootPath: string): string[] {
+  const normalizedRoute = normalizeGuideNavigationRoute(route, guideRootPath);
+  const prefix = `${guideRootPath}/`;
+
+  if (!normalizedRoute.startsWith(prefix)) {
+    throw new Error(`Guide route "${route}" is outside the configured guide route "${guideRootPath}".`);
+  }
+
+  return normalizedRoute.slice(prefix.length).split("/").filter(Boolean);
+}
+
+function formatGuideNavigationGroupLabel(value: string): string {
+  const withoutOrder = value.replace(/^\d+[.)-]?[-_\s]*/, "");
+  const formatted = withoutOrder
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter: string) => letter.toUpperCase())
+    .trim();
+
+  return formatted || value;
 }
 
 function createApiNavigation(apiEntries: ApiCollectionEntry[], apiRootPath: string): NavTab[] {
@@ -199,6 +256,100 @@ function createApiNavigation(apiEntries: ApiCollectionEntry[], apiRootPath: stri
   return renderNode(root);
 }
 
+function createGuideNavigation(
+  guideEntries: GuideCollectionEntry[],
+  guideRootPath: string,
+  readingOrderIndex: Map<string, number>
+): NavTab[] {
+  const root: GuideNavigationNode = {
+    segment: "",
+    entry: null,
+    children: new Map(),
+    order: Number.POSITIVE_INFINITY
+  };
+
+  for (const [sourceOrder, entry] of guideEntries.entries()) {
+    const route = getGuideEntryRoute(entry);
+
+    if (route === guideRootPath) {
+      continue;
+    }
+
+    const segments = getGuideRouteSegments(route, guideRootPath);
+
+    if (segments.length === 0) {
+      throw new Error(`Guide entry "${entry.id}" did not produce a nested route.`);
+    }
+
+    let node = root;
+
+    for (const segment of segments) {
+      let child = node.children.get(segment);
+
+      if (!child) {
+        child = {
+          segment,
+          entry: null,
+          children: new Map(),
+          order: Number.POSITIVE_INFINITY
+        };
+        node.children.set(segment, child);
+      }
+
+      node = child;
+    }
+
+    if (node.entry) {
+      throw new Error(`Guide navigation collision: "${route}" maps to multiple entries.`);
+    }
+
+    node.entry = {
+      label: cleanLabel(entry.data.title),
+      href: withBase(route)
+    };
+    node.order = readingOrderIndex.get(normalizeGuideNavigationRoute(route, guideRootPath)) ?? sourceOrder;
+  }
+
+  function getNodeOrder(node: GuideNavigationNode): number {
+    return [...node.children.values()].reduce(
+      (order, child) => Math.min(order, getNodeOrder(child)),
+      node.order
+    );
+  }
+
+  function renderNode(node: GuideNavigationNode): NavTab[] {
+    return [...node.children.values()]
+      .sort((a, b) => {
+        const aOrder = getNodeOrder(a);
+        const bOrder = getNodeOrder(b);
+
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+
+        return a.segment.localeCompare(b.segment);
+      })
+      .map((child) => {
+        const children = renderNode(child);
+
+        if (children.length > 0) {
+          return {
+            label: child.entry?.label ?? formatGuideNavigationGroupLabel(child.segment),
+            children: child.entry?.href
+              ? [{ label: "Introduction", href: child.entry.href }, ...children]
+              : children
+          };
+        }
+
+        return child.entry ?? {
+          label: formatGuideNavigationGroupLabel(child.segment)
+        };
+      });
+  }
+
+  return renderNode(root);
+}
+
 const guideRootPath = getGuideRoutePath();
 const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
@@ -213,35 +364,20 @@ if (!introEntry) {
   throw new Error("Missing introduction entry");
 }
 
-const guideIndexEntry = guideEntries.find((entry: GuideCollectionEntry) => getGuideRoute(entry) === guideRootPath);
+const guideIndexEntry = guideEntries.find((entry: GuideCollectionEntry) => getGuideEntryRoute(entry) === guideRootPath);
 
 if (!guideIndexEntry) {
   throw new Error("Missing guide index entry");
 }
 
 const guideIndexRaw = guideIndexEntry.body;
-const readingOrder = parseReadingOrder(guideIndexRaw);
+const readingOrder = parseReadingOrder(guideIndexRaw, guideRootPath);
 
 const readingOrderIndex = new Map<string, number>(
   readingOrder.map((entry, index) => [entry.href.replace(/\/+$/, ""), index])
 );
 
-const guideChapters: OrderedGuideEntry[] = guideEntries
-  .filter((entry: GuideCollectionEntry) => getGuideRoute(entry) !== guideRootPath)
-  .map((entry: GuideCollectionEntry, index: number) => ({
-    entry,
-    index,
-    route: getGuideRoute(entry)
-  }))
-  .sort((a: OrderedGuideEntry, b: OrderedGuideEntry) => {
-    const aOrder = readingOrderIndex.get(a.route) ?? a.index;
-    const bOrder = readingOrderIndex.get(b.route) ?? b.index;
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
-    }
-
-    return a.route.localeCompare(b.route);
-  });
+const guideNavigation = createGuideNavigation(guideEntries, guideRootPath, readingOrderIndex);
 
 const sidebarTabs: NavTab[] = [
   {
@@ -255,10 +391,7 @@ const sidebarTabs: NavTab[] = [
         label: "Introduction",
         href: withBase(guideRootPath)
       },
-      ...guideChapters.map(({ entry, route }: OrderedGuideEntry) => ({
-        label: cleanLabel(entry.data.title),
-        href: withBase(route)
-      }))
+      ...guideNavigation
     ]
   },
   {

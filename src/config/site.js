@@ -198,6 +198,27 @@ function getGuideRoutePath(...segments) {
   return joinRoutePath(getWebsiteConfig().guideRoute, ...segments);
 }
 
+function stripGuideOrderPrefix(value) {
+  const stripped = value.replace(/^\d+(?:[.)_-]|\s)+/, "");
+  return stripped || value;
+}
+
+function getGuideEntryRoute(entry) {
+  const raw = entry.slug ?? entry.id;
+  const cleaned = raw.replace(/\.md$/, "");
+
+  if (cleaned === "index") {
+    return getGuideRoutePath();
+  }
+
+  const segments = cleaned
+    .split("/")
+    .filter(Boolean)
+    .map(stripGuideOrderPrefix);
+
+  return getGuideRoutePath(...segments);
+}
+
 function getExamplesRoutePath(...segments) {
   return joinRoutePath(getWebsiteConfig().examplesRoute, ...segments);
 }
@@ -280,6 +301,7 @@ export {
   getApiSourceDir,
   getExamplesContentDir,
   getExamplesRoutePath,
+  getGuideEntryRoute,
   getGuideContentDir,
   getGuideRoutePath,
   getIntroContentPath,
