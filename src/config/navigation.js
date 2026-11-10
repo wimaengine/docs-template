@@ -148,7 +148,7 @@ const sidebarTabs = [
     label: "Guide",
     children: [
       {
-        label: "Guide",
+        label: "Introduction",
         href: withBase(guideRootPath)
       },
       ...guideChapters.map(({ entry, route }) => ({
@@ -161,7 +161,7 @@ const sidebarTabs = [
     label: "API",
     children: [
       {
-        label: "API",
+        label: "Introduction",
         href: withBase(apiRootPath)
       },
       ...createApiNavigation(apiEntries)

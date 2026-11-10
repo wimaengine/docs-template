@@ -209,7 +209,7 @@ const sidebarTabs: NavTab[] = [
     label: "Guide",
     children: [
       {
-        label: "Guide",
+        label: "Introduction",
         href: withBase(guideRootPath)
       },
       ...guideChapters.map(({ entry, route }: OrderedGuideEntry) => ({
@@ -222,7 +222,7 @@ const sidebarTabs: NavTab[] = [
     label: "API",
     children: [
       {
-        label: "API",
+        label: "Introduction",
         href: withBase(apiRootPath)
       },
       ...createApiNavigation(apiEntries)
