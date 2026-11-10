@@ -1,0 +1,120 @@
+---
+import { sidebarTabs } from "@configs";
+import type { NavTab } from "@configs/navigation";
+
+interface GuideLink {
+  label: string;
+  href: string;
+}
+
+function normalizePath(value: string): string {
+  const [path] = value.split(/[?#]/, 1);
+  const trimmed = path.replace(/\/+$/, "");
+  return trimmed || "/";
+}
+
+function flattenGuideTabs(tabs: NavTab[], links: GuideLink[] = []): GuideLink[] {
+  for (const tab of tabs) {
+    if (tab.href) {
+      links.push({
+        label: tab.label,
+        href: tab.href
+      });
+    }
+
+    if (tab.children) {
+      flattenGuideTabs(tab.children, links);
+    }
+  }
+
+  return links;
+}
+
+const guideTab = (sidebarTabs as NavTab[]).find((tab) => tab.label === "Guide");
+const guideLinks = flattenGuideTabs(guideTab?.children ?? []);
+const currentPath = normalizePath(Astro.url.pathname);
+const currentIndex = guideLinks.findIndex((link) => normalizePath(link.href) === currentPath);
+const previous = currentIndex > 0 ? guideLinks[currentIndex - 1] : null;
+const next = currentIndex >= 0 && currentIndex < guideLinks.length - 1 ? guideLinks[currentIndex + 1] : null;
+---
+
+{(previous || next) && (
+  <nav class="guide-pagination" aria-label="Guide pagination">
+    {previous ? (
+      <a class="guide-pagination-link previous" href={previous.href} aria-label={`Previous guide: ${previous.label}`}>
+        <span class="guide-pagination-direction">Previous</span>
+        <span class="guide-pagination-title">{previous.label}</span>
+      </a>
+    ) : <span class="guide-pagination-spacer" aria-hidden="true" />}
+    {next ? (
+      <a class="guide-pagination-link next" href={next.href} aria-label={`Next guide: ${next.label}`}>
+        <span class="guide-pagination-direction">Next</span>
+        <span class="guide-pagination-title">{next.label}</span>
+      </a>
+    ) : <span class="guide-pagination-spacer" aria-hidden="true" />}
+  </nav>
+)}
+
+<style>
+  .guide-pagination {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+  }
+
+  .guide-pagination-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    color: var(--text);
+    background: var(--surface-2);
+    text-decoration: none;
+    transition: border-color 160ms ease, background 160ms ease;
+  }
+
+  .guide-pagination-link:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-3);
+  }
+
+  .guide-pagination-link.next {
+    text-align: right;
+    align-items: flex-end;
+  }
+
+  .guide-pagination-direction {
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .guide-pagination-title {
+    overflow: hidden;
+    max-width: 100%;
+    color: var(--accent);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    .guide-pagination {
+      grid-template-columns: 1fr;
+    }
+
+    .guide-pagination-spacer {
+      display: none;
+    }
+
+    .guide-pagination-link.next {
+      text-align: left;
+      align-items: flex-start;
+    }
+  }
+</style>
