@@ -1,7 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { projectRootDir } from "./project.js";
-import { getMdnTypeUrl } from "../utils/mdn.js";
 
 const linkMapPath = path.join(projectRootDir, ".astro", "link-map.json");
 
@@ -28,8 +27,8 @@ function writeLinks(links) {
   renameSync(temporaryPath, linkMapPath);
 }
 
-export function clearLinks() {
-  writeLinks(createLinks());
+export function clearLinks(initialLinks = {}) {
+  writeLinks(Object.assign(createLinks(), initialLinks));
 }
 
 function normalizeSlashes(value) {
@@ -98,24 +97,8 @@ function getRegisteredLink(alias, links) {
   return route === null ? undefined : route;
 }
 
-function hasRegisteredLink(alias, links) {
-  const key = normalizeAlias(alias);
-  return key && Object.prototype.hasOwnProperty.call(links, key);
-}
-
 export function getLink(alias) {
   const links = readLinks();
   const route = getRegisteredLink(alias, links);
-  if (route) {
-    return route;
-  }
-
-  if (!hasRegisteredLink(alias, links)) {
-    const mdnRoute = getMdnTypeUrl(alias);
-    if (mdnRoute) {
-      return mdnRoute;
-    }
-  }
-
-  return undefined;
+  return route;
 }

@@ -187,19 +187,17 @@ const internationalizationLinks = Object.fromEntries(
  * Exact type-name links for JavaScript built-ins and Web API interfaces.
  * Keep this registry local so documentation builds do not need network access.
  */
-export const mdnTypeLinks = Object.freeze({
+const exactMdnTypeLinks = {
   ...makeLinks(javascriptBuiltins, JAVASCRIPT_BASE),
   ...internationalizationLinks,
   ...makeLinks(webApiTypes, WEB_API_BASE),
   ...primitiveTypes,
   ...globalValues
+};
+
+export const mdnTypeLinks = Object.freeze({
+  ...exactMdnTypeLinks,
+  ...Object.fromEntries(
+    Object.entries(exactMdnTypeLinks).map(([name, route]) => [`globalThis.${name}`, route])
+  )
 });
-
-export function getMdnTypeUrl(name) {
-  if (typeof name !== "string") {
-    return undefined;
-  }
-
-  const normalizedName = name.replace(/^globalThis\./, "");
-  return mdnTypeLinks[normalizedName];
-}
