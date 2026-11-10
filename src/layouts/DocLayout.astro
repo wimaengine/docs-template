@@ -1,5 +1,5 @@
 ---
-import { Check, Copy } from "@lucide/astro";
+import { Check, Copy, Settings } from "@lucide/astro";
 import SidebarNav from "@components/SidebarNav.astro";
 import PageOutline from "@components/PageOutline.astro";
 import { rootPackageName } from "@configs/project.js";
@@ -24,6 +24,7 @@ const { title = rootPackageName, tabs = [], headings = [], rightPanel } = Astro.
 const hasPageOutline = headings.some((heading) => heading.depth > 1);
 const hasApiPanel = rightPanel === "api";
 const { theme } = getWebsiteConfig();
+const themeNames = Object.keys(theme.schemes);
 const themeStyles = getWebsiteThemeStyles(theme);
 ---
 
@@ -150,6 +151,95 @@ const themeStyles = getWebsiteThemeStyles(theme);
 
       .site-brand:hover {
         color: var(--accent);
+      }
+
+      .settings {
+        position: relative;
+        margin-left: auto;
+      }
+
+      .settings-toggle {
+        width: 2.75rem;
+        height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .settings-toggle svg {
+        width: 1.1rem;
+        height: 1.1rem;
+      }
+
+      .settings-toggle:hover {
+        background: transparent;
+        color: var(--accent);
+      }
+
+      .settings-toggle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .settings-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        z-index: 1100;
+        min-width: 12rem;
+        max-width: calc(100vw - 2rem);
+        padding: 0.65rem;
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        background: var(--panel);
+        box-shadow: 0 14px 30px #00000026;
+      }
+
+      .settings-dropdown[hidden] {
+        display: none;
+      }
+
+      .settings-section + .settings-section {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+      }
+
+      .settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-height: 2rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .settings-row select {
+        width: 9rem;
+        min-width: 0;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 0.4rem;
+        background: var(--surface-2);
+        color: var(--text);
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .settings-row select:hover {
+        border-color: var(--border-strong);
+      }
+
+      .settings-row select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
       }
 
       .menu-toggle {
@@ -700,6 +790,30 @@ const themeStyles = getWebsiteThemeStyles(theme);
             <span aria-hidden="true"></span>
           </button>
           <a class="site-brand" href={withBase("/")}>{rootPackageName}</a>
+          <div class="settings">
+            <button
+              class="settings-toggle"
+              id="settings-toggle"
+              type="button"
+              aria-label="Open settings"
+              aria-expanded="false"
+              aria-controls="settings-dropdown"
+            >
+              <Settings size={18} aria-hidden="true" />
+            </button>
+            <div class="settings-dropdown" id="settings-dropdown" hidden>
+              <div class="settings-section">
+                <div class="settings-row">
+                  <label for="site-theme">Theme</label>
+                  <select id="site-theme" name="site-theme">
+                    {themeNames.map((name) => (
+                      <option value={name} selected={name === theme.default}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
       <aside id="site-sidebar" aria-label="Sidebar navigation">
@@ -782,6 +896,116 @@ const themeStyles = getWebsiteThemeStyles(theme);
 
       desktopViewport.addEventListener("change", syncSidebarMode);
       syncSidebarMode();
+
+      const settingsToggle = document.getElementById("settings-toggle");
+      const settingsDropdown = document.getElementById("settings-dropdown");
+      const themeSelect = document.getElementById("site-theme");
+      const themeStorageKey = "site-theme";
+      const themeNames = new Set(
+        themeSelect instanceof HTMLSelectElement
+          ? Array.from(themeSelect.options, (option) => option.value)
+          : []
+      );
+
+      const readStoredTheme = () => {
+        try {
+          const storedTheme = window.localStorage.getItem(themeStorageKey);
+          return themeNames.has(storedTheme) ? storedTheme : null;
+        } catch {
+          return null;
+        }
+      };
+
+      const applyTheme = (name, persist = false) => {
+        if (!themeNames.has(name)) {
+          return;
+        }
+
+        document.documentElement.dataset.theme = name;
+        if (themeSelect instanceof HTMLSelectElement) {
+          themeSelect.value = name;
+        }
+
+        if (persist) {
+          try {
+            window.localStorage.setItem(themeStorageKey, name);
+          } catch {
+            // Ignore storage failures.
+          }
+        }
+      };
+
+      const closeSettingsDropdown = (restoreFocus = false) => {
+        if (!(settingsToggle instanceof HTMLButtonElement) ||
+            !(settingsDropdown instanceof HTMLElement)) {
+          return;
+        }
+
+        settingsDropdown.hidden = true;
+        settingsToggle.setAttribute("aria-expanded", "false");
+
+        if (restoreFocus) {
+          settingsToggle.focus();
+        }
+      };
+
+      const openSettingsDropdown = () => {
+        if (!(settingsToggle instanceof HTMLButtonElement) ||
+            !(settingsDropdown instanceof HTMLElement)) {
+          return;
+        }
+
+        settingsDropdown.hidden = false;
+        settingsToggle.setAttribute("aria-expanded", "true");
+        if (themeSelect instanceof HTMLSelectElement) {
+          themeSelect.focus();
+        }
+      };
+
+      applyTheme(
+        readStoredTheme() ??
+          document.documentElement.dataset.theme ??
+          (themeSelect instanceof HTMLSelectElement ? themeSelect.value : undefined)
+      );
+
+      settingsToggle?.addEventListener("click", () => {
+        if (!(settingsDropdown instanceof HTMLElement)) {
+          return;
+        }
+
+        if (settingsDropdown.hidden) {
+          openSettingsDropdown();
+        } else {
+          closeSettingsDropdown(true);
+        }
+      });
+
+      if (themeSelect instanceof HTMLSelectElement) {
+        themeSelect.addEventListener("change", () => {
+          applyTheme(themeSelect.value, true);
+          closeSettingsDropdown(true);
+        });
+      }
+
+      document.addEventListener("click", (event) => {
+        if (!(settingsDropdown instanceof HTMLElement) ||
+            !(settingsToggle instanceof HTMLElement) ||
+            !(event.target instanceof Node)) {
+          return;
+        }
+
+        if (!settingsDropdown.contains(event.target) && !settingsToggle.contains(event.target)) {
+          closeSettingsDropdown();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" &&
+            settingsDropdown instanceof HTMLElement &&
+            !settingsDropdown.hidden) {
+          closeSettingsDropdown(true);
+        }
+      });
 
       const copyIconTemplate = document.getElementById("code-copy-icon");
       const checkIconTemplate = document.getElementById("code-check-icon");
