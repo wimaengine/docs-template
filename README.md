@@ -29,7 +29,7 @@ export default defineConfig({
 });
 ```
 
-`apiEntryRoute` is optional. It receives the stable API entry path, the serialized TypeDoc reflection, and the first `@category` value when present. It must return a deterministic path relative to `apiRoute`. Without a custom resolver, entries use a `kind/name` path such as `/api/function/format-date`.
+`apiEntryRoute` is optional. It receives the stable API entry path, the serialized TypeDoc reflection, and the first `@category` value when present. It must return a deterministic path relative to `apiRoute`. Without a custom resolver, entries use a `kind/name` path such as `/api/function/formatDate`, preserving the TypeDoc reflection name exactly.
 
 ## Host Content
 

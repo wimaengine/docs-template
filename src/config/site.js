@@ -26,19 +26,9 @@ function setRegisteredApiEntryRoute(routeResolver) {
   getWebsiteConfigRegistry()?.set(projectRootDir, routeResolver);
 }
 
-function slugifyRouteSegment(value) {
-  return String(value ?? "")
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .replace(/[_\s]+/g, "-")
-    .replace(/[^a-z0-9-]/gi, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toLowerCase();
-}
-
 function defaultApiEntryRoute(_path, reflection) {
   const kind = getReflectionKindSlug(reflection?.kind);
-  const name = slugifyRouteSegment(reflection?.name) || "entry";
+  const name = reflection?.name ?? "entry";
   return `${kind}/${name}`;
 }
 
