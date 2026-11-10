@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getGuideContentDir, getGuideRoutePath } from "../config/site.js";
+import { getGuideContentDir, getGuideRoutePath, getIntroContentPath } from "../config/site.js";
 import { getLink } from "../config/link-map.js";
 import { projectRootDir } from "../config/project.js";
 import { resolveSiteLink } from "../config/links.js";
@@ -59,6 +59,61 @@ function getGuideEntryId(relativePath) {
   return id.endsWith("/index") ? id.slice(0, -"/index".length) : id;
 }
 
+function getProjectRelativeAlias(filePath) {
+  const relativePath = path.relative(projectRootDir, filePath);
+
+  if (
+    relativePath === "" ||
+    relativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativePath)
+  ) {
+    return undefined;
+  }
+
+  return relativePath
+    .split(path.sep)
+    .join("/")
+    .replace(/\.[^/.]+$/, "")
+    .replace(/\/index$/, "");
+}
+
+function getIntroTargetRoute(targetFilePath) {
+  const guideDirectory = path.resolve(getGuideContentDir());
+
+  if (isInsideDirectory(guideDirectory, targetFilePath)) {
+    const guideRelativePath = path.relative(guideDirectory, targetFilePath).split(path.sep).join("/");
+    const guideEntryId = getGuideEntryId(guideRelativePath);
+    const guideAlias = getGuideRoutePath(guideEntryId);
+    return getLink(guideAlias) ?? getLink(`${guideAlias}/index`);
+  }
+
+  const alias = getProjectRelativeAlias(targetFilePath);
+  return alias ? getLink(alias) ?? getLink(`${alias}/index`) : undefined;
+}
+
+function resolveIntroLink(value, sourcePath) {
+  if (!sourcePath || value === "" || value.startsWith("#")) {
+    return resolveSiteLink(value);
+  }
+
+  const { hash, pathname, query } = splitLink(value);
+  if (!pathname || pathname.startsWith("/")) {
+    return resolveSiteLink(value);
+  }
+
+  const sourceFilePath = resolveSourcePath(sourcePath);
+  const introFilePath = path.resolve(getIntroContentPath());
+
+  if (sourceFilePath !== introFilePath) {
+    return resolveSiteLink(value);
+  }
+
+  const targetFilePath = path.resolve(path.dirname(sourceFilePath), decodeURIComponent(pathname));
+  const route = getIntroTargetRoute(targetFilePath);
+
+  return route ? appendLinkSuffix(route, query, hash) : resolveSiteLink(value);
+}
+
 export function resolveGuideLink(value, sourcePath) {
   if (!sourcePath || value === "" || value.startsWith("#")) {
     return resolveSiteLink(value);
@@ -74,7 +129,7 @@ export function resolveGuideLink(value, sourcePath) {
   const targetFilePath = path.resolve(path.dirname(sourceFilePath), decodeURIComponent(pathname));
 
   if (!isInsideDirectory(guideDirectory, sourceFilePath) || !isInsideDirectory(guideDirectory, targetFilePath)) {
-    return resolveSiteLink(value);
+    return resolveIntroLink(value, sourcePath);
   }
 
   const guideRelativePath = path.relative(guideDirectory, targetFilePath).split(path.sep).join("/");
