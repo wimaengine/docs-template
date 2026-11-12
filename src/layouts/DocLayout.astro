@@ -2,10 +2,10 @@
 import { Check, Copy, Link as LinkIcon, Settings } from "@lucide/astro";
 import SidebarNav from "@components/SidebarNav.astro";
 import PageOutline from "@components/PageOutline.astro";
-import { rootPackageName } from "@configs/project.js";
+import { rootPackageName } from "@configs/project.ts";
 import type { NavTab } from "@configs/navigation";
-import { getWebsiteConfig, getWebsiteThemeStyles } from "@configs/site.js";
-import { withBase } from "../utils/url.js";
+import { getWebsiteConfig, getWebsiteThemeStyles } from "@configs/site.ts";
+import { withBase } from "../utils/url.ts";
 
 interface HeadingLike {
   depth: number;

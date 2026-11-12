@@ -1,15 +1,10 @@
 ---
 import { render } from "astro:content";
-import { rootPackageName } from "@configs/project.js";
+import { rootPackageName } from "@configs/project.ts";
 import { sidebarTabs } from "@configs";
 import GuidePagination from "@components/GuidePagination.astro";
 import DocLayout from "@layouts/DocLayout.astro";
-
-interface GuideCollectionEntry {
-  data: {
-    title: string;
-  };
-}
+import type { GuideCollectionEntry } from "../types.ts";
 
 interface Props {
   entry: GuideCollectionEntry;

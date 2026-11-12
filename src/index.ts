@@ -1,11 +1,12 @@
 import path from "node:path";
 import { satteri } from "@astrojs/markdown-satteri";
-import { rootPackageDevUrl, rootPackageName, projectRootDir, websiteRootDir } from "./config/project.js";
-import { clearLinks } from "./config/link-map.js";
-import { setWebsiteConfig } from "./config/site.js";
-import { markdownPlugins } from "./plugins/markdown-satteri.js";
+import type { AstroIntegration } from "astro";
+import { rootPackageDevUrl, rootPackageName, projectRootDir, websiteRootDir } from "./config/project.ts";
+import { clearLinks } from "./config/link-map.ts";
+import { setWebsiteConfig, type WebsiteConfigOptions } from "./config/site.ts";
+import { markdownPlugins } from "./plugins/markdown-satteri.ts";
 
-export function website(options = {}) {
+export function website(options: WebsiteConfigOptions = {}): AstroIntegration {
   clearLinks();
   setWebsiteConfig(options);
 

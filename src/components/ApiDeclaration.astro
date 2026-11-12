@@ -1,9 +1,10 @@
 ---
-import { getTypeParameters, ReflectionKind } from "../utils/typedoc.js";
+import { getTypeParameters, ReflectionKind } from "../utils/typedoc.ts";
+import type { JSONOutput } from "typedoc";
 import ApiType from "./ApiType.astro";
 
 interface Props {
-  reflection: Record<string, any>;
+  reflection: JSONOutput.DeclarationReflection;
 }
 
 const { reflection } = Astro.props as Props;

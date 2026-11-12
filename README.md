@@ -55,9 +55,9 @@ Theme scheme names are arbitrary identifiers. Each scheme writes the template's 
 
 ## Host Content
 
-Create a `src/content.config.js` file in the host project:
+Create a `src/content.config.ts` file in the host project:
 
-```js
+```ts
 export { collections } from "wima-docs-website-template/loaders";
 ```
 

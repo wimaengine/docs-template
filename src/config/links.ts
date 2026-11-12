@@ -3,46 +3,48 @@ import {
   getApiPackageRoute,
   getExamplesRoutePath,
   getGuideEntryRoute
-} from "./site.js";
-import { addLink, addLinks, getLink } from "./link-map.js";
-import { getReflectionMemberAnchor } from "../utils/typedoc.js";
+} from "./site.ts";
+import type { JSONOutput } from "typedoc";
+import type { ContentLinkEntry } from "../types.ts";
+import { addLink, addLinks, getLink } from "./link-map.ts";
+import { getReflectionMemberAnchor } from "../utils/typedoc.ts";
 
 export { addLink, addLinks, getLink };
 
-export function addIntroLinks(entries) {
-  const links = [];
+export function addIntroLinks(entries: ContentLinkEntry[]): void {
+  const links: Array<[string, string]> = [];
 
   for (const entry of entries) {
-    links.push([entry.filePath, "/"]);
+    links.push([entry.filePath!, "/"]);
   }
 
   addLinks(links);
 }
 
-export function addGuideLinks(entries) {
-  const links = [];
+export function addGuideLinks(entries: ContentLinkEntry[]): void {
+  const links: Array<[string, string]> = [];
 
   for (const entry of entries) {
     const route = getGuideEntryRoute(entry);
-    links.push([entry.filePath, route]);
+    links.push([entry.filePath!, route]);
   }
 
   addLinks(links);
 }
 
-export function addExampleLinks(entries) {
-  const links = [];
+export function addExampleLinks(entries: ContentLinkEntry[]): void {
+  const links: Array<[string, string]> = [];
 
   for (const entry of entries) {
     const route = getExamplesRoutePath(entry.id);
-    links.push([entry.filePath, route]);
+    links.push([entry.filePath!, route]);
   }
 
   addLinks(links);
 }
 
-export function addApiPackageLinks(entries) {
-  const links = [];
+export function addApiPackageLinks(entries: ContentLinkEntry[]): void {
+  const links: Array<[string, string]> = [];
 
   for (const entry of entries) {
     if (!entry.filePath) {
@@ -56,16 +58,27 @@ export function addApiPackageLinks(entries) {
   addLinks(links);
 }
 
-function getReflectionChildren(reflection) {
-  return reflection?.children ?? [];
+function getReflectionChildren(reflection: JSONOutput.SomeReflection): JSONOutput.SomeReflection[] {
+  if (!("children" in reflection)) {
+    return [];
+  }
+
+  return reflection.children ?? [];
 }
 
-function getReflectionName(reflection) {
-  const name = reflection?.name;
-  return typeof name === "string" && name.trim() !== "" ? name.trim() : undefined;
+function getReflectionName(reflection: JSONOutput.SomeReflection): string {
+  return reflection.name.trim();
 }
 
-function addReflectionLinks(links, reflection, route, parentNames = [], seenIds = new Set(), anchor, separator) {
+function addReflectionLinks(
+  links: Array<[string, string]>,
+  reflection: JSONOutput.SomeReflection | undefined,
+  route: string,
+  parentNames: string[] = [],
+  seenIds: Set<number> = new Set(),
+  anchor?: string,
+  separator = "#"
+): void {
   if (!reflection) {
     return;
   }
@@ -101,8 +114,8 @@ function addReflectionLinks(links, reflection, route, parentNames = [], seenIds 
   }
 }
 
-export function addApiLinks(entries) {
-  const links = [];
+export function addApiLinks(entries: Array<{ data: JSONOutput.SomeReflection }>): void {
+  const links: Array<[string, string]> = [];
 
   for (const entry of entries) {
     addReflectionLinks(links, entry.data, getApiEntryRoute(entry));
@@ -111,7 +124,7 @@ export function addApiLinks(entries) {
   addLinks(links);
 }
 
-function splitLink(value) {
+function splitLink(value: string): { hash: string; pathname: string; query: string } {
   const hashIndex = value.indexOf("#");
   const withoutHash = hashIndex === -1 ? value : value.slice(0, hashIndex);
   const hash = hashIndex === -1 ? "" : value.slice(hashIndex);
@@ -124,11 +137,11 @@ function splitLink(value) {
   };
 }
 
-function isExternalLink(value) {
+function isExternalLink(value: string): boolean {
   return /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value);
 }
 
-function appendLinkSuffix(route, query, hash) {
+function appendLinkSuffix(route: string, query: string, hash: string): string {
   const hashIndex = route.indexOf("#");
   const routePath = hashIndex === -1 ? route : route.slice(0, hashIndex);
   const routeHash = hashIndex === -1 ? "" : route.slice(hashIndex);
@@ -136,7 +149,7 @@ function appendLinkSuffix(route, query, hash) {
   return `${routePath}${query}${hash || routeHash}`;
 }
 
-export function resolveSiteLink(value) {
+export function resolveSiteLink(value: string): string {
   if (value === "" || isExternalLink(value) || value.startsWith("#")) {
     return value;
   }

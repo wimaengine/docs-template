@@ -1,5 +1,5 @@
 ---
-import { rootPackageName } from "@configs/project.js";
+import { rootPackageName } from "@configs/project.ts";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiDeclaration from "../components/ApiDeclaration.astro";
@@ -10,7 +10,7 @@ import ApiReflection from "../components/ApiReflection.astro";
 import ApiSignature from "../components/ApiSignature.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import SourceLink from "../components/SourceLink.astro";
-import { getSourceUrl } from "../utils/source-links.js";
+import { getSourceUrl } from "../utils/source-links.ts";
 import {
   getReflectionDescriptionMarkdown,
   getReflectionKindLabel,
@@ -19,20 +19,8 @@ import {
   getReflectionTags,
   getVisibleReflectionChildren,
   ReflectionKind
-} from "../utils/typedoc.js";
-
-interface TypeDocReflection {
-  id: number;
-  name: string;
-  kind: number;
-  [key: string]: any;
-}
-
-interface ApiCollectionEntry {
-  id: string;
-  filePath: string;
-  data: TypeDocReflection;
-}
+} from "../utils/typedoc.ts";
+import type { ApiCollectionEntry } from "../types.ts";
 
 interface Props {
   entry: ApiCollectionEntry;

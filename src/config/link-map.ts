@@ -1,16 +1,20 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { projectRootDir } from "./project.js";
+import { projectRootDir } from "./project.ts";
+
+type LinkMap = Record<string, string | null>;
+export type LinkEntry = [alias: string, route: string];
 
 const linkMapPath = path.join(projectRootDir, ".astro", "link-map.json");
 
-function createLinks() {
-  return { __proto__: null };
+function createLinks(): LinkMap {
+  return { __proto__: null } as LinkMap;
 }
 
-function readLinks() {
+function readLinks(): LinkMap {
   try {
-    return Object.assign(createLinks(), JSON.parse(readFileSync(linkMapPath, "utf8")));
+    const links = JSON.parse(readFileSync(linkMapPath, "utf8")) as LinkMap;
+    return Object.assign(createLinks(), links);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
       return createLinks();
@@ -20,22 +24,22 @@ function readLinks() {
   }
 }
 
-function writeLinks(links) {
+function writeLinks(links: LinkMap): void {
   mkdirSync(path.dirname(linkMapPath), { recursive: true });
   const temporaryPath = `${linkMapPath}.${process.pid}.tmp`;
   writeFileSync(temporaryPath, `${JSON.stringify(links, null, 2)}\n`, "utf8");
   renameSync(temporaryPath, linkMapPath);
 }
 
-export function clearLinks(initialLinks = {}) {
+export function clearLinks(initialLinks: LinkMap = {}): void {
   writeLinks(Object.assign(createLinks(), initialLinks));
 }
 
-function normalizeSlashes(value) {
+function normalizeSlashes(value: string): string {
   return value.replace(/\\/g, "/");
 }
 
-function getProjectRelativePath(value) {
+function getProjectRelativePath(value: string): string {
   if (!path.isAbsolute(value)) {
     return value;
   }
@@ -48,7 +52,7 @@ function getProjectRelativePath(value) {
   return relative;
 }
 
-function normalizeAlias(value) {
+function normalizeAlias(value: string): string {
   let alias = normalizeSlashes(value.trim());
   if (!alias) {
     return "";
@@ -64,7 +68,7 @@ function normalizeAlias(value) {
   return alias === "." ? "" : alias;
 }
 
-export function addLinks(entries = []) {
+export function addLinks(entries: LinkEntry[] = []): void {
   const links = readLinks();
 
   for (const [alias, route] of entries) {
@@ -88,11 +92,11 @@ export function addLinks(entries = []) {
   writeLinks(links);
 }
 
-export function addLink(alias, route) {
+export function addLink(alias: string, route: string): void {
   addLinks([[alias, route]]);
 }
 
-function getRegisteredLink(alias, links) {
+function getRegisteredLink(alias: string, links: LinkMap): string | undefined {
   const key = normalizeAlias(alias);
   if (!key || !Object.prototype.hasOwnProperty.call(links, key)) {
     return undefined;
@@ -102,7 +106,7 @@ function getRegisteredLink(alias, links) {
   return route === null ? undefined : route;
 }
 
-export function getLink(alias) {
+export function getLink(alias: string): string | undefined {
   const links = readLinks();
   const route = getRegisteredLink(alias, links);
   return route;

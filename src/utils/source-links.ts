@@ -1,14 +1,22 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { projectRootDir } from "../config/project.js";
-import { getWebsiteConfig } from "../config/site.js";
+import type { RootPackageJson } from "../config/project.ts";
+import { projectRootDir } from "../config/project.ts";
+import { getWebsiteConfig } from "../config/site.ts";
 
-const packageInfoCache = new Map();
+interface PackageInfo {
+  root: string;
+  repositoryUrl: string | null;
+}
 
-function normalizeRepositoryUrl(repository) {
-  const value = typeof repository === "string" ? repository : repository?.url;
+const packageInfoCache = new Map<string, PackageInfo>();
 
-  if (typeof value !== "string" || value.trim() === "") {
+function normalizeRepositoryUrl(repository: RootPackageJson["repository"]): string | null {
+  const value = typeof repository === "string"
+    ? repository
+    : repository?.url;
+
+  if (!value?.trim()) {
     return null;
   }
 
@@ -25,16 +33,16 @@ function normalizeRepositoryUrl(repository) {
   return url;
 }
 
-function readPackageInfo(packageRoot) {
+function readPackageInfo(packageRoot: string): PackageInfo {
   if (packageInfoCache.has(packageRoot)) {
-    return packageInfoCache.get(packageRoot);
+    return packageInfoCache.get(packageRoot)!;
   }
 
   const packageJsonPath = path.join(packageRoot, "package.json");
-  let packageJson;
+  let packageJson: RootPackageJson | null;
 
   try {
-    packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+    packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as RootPackageJson;
   } catch {
     packageJson = null;
   }
@@ -47,8 +55,8 @@ function readPackageInfo(packageRoot) {
   return info;
 }
 
-function resolveSourcePath(sourcePath) {
-  if (typeof sourcePath !== "string" || sourcePath.trim() === "") {
+function resolveSourcePath(sourcePath: string): string | null {
+  if (!sourcePath.trim()) {
     return null;
   }
 
@@ -69,7 +77,7 @@ function resolveSourcePath(sourcePath) {
   return candidates.find((candidate) => existsSync(candidate)) ?? null;
 }
 
-function findPackageInfo(sourceFilePath) {
+function findPackageInfo(sourceFilePath: string): PackageInfo | null {
   let current = path.dirname(sourceFilePath);
 
   while (current === projectRootDir || current.startsWith(`${projectRootDir}${path.sep}`)) {
@@ -89,7 +97,7 @@ function findPackageInfo(sourceFilePath) {
   return null;
 }
 
-function getRepositoryPath(sourceFilePath, packageInfo) {
+function getRepositoryPath(sourceFilePath: string, packageInfo: PackageInfo): string | null {
   const rootInfo = readPackageInfo(projectRootDir);
   const sameRepository = rootInfo.repositoryUrl === packageInfo.repositoryUrl;
   const basePath = sameRepository ? projectRootDir : packageInfo.root;
@@ -98,7 +106,10 @@ function getRepositoryPath(sourceFilePath, packageInfo) {
   return relativePath.startsWith("..") ? null : relativePath;
 }
 
-export function getSourceUrl(sourcePath, line) {
+export function getSourceUrl(sourcePath: string | undefined, line?: number): string | null {
+  if (!sourcePath) {
+    return null;
+  }
   const sourceFilePath = resolveSourcePath(sourcePath);
 
   if (!sourceFilePath) {
@@ -120,7 +131,7 @@ export function getSourceUrl(sourcePath, line) {
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/");
-  const lineSuffix = Number.isInteger(line) && line > 0 ? `#L${line}` : "";
+  const lineSuffix = line !== undefined && line > 0 ? `#L${line}` : "";
 
   return `${packageInfo.repositoryUrl}/blob/${encodedBranch}/${encodedPath}${lineSuffix}`;
 }

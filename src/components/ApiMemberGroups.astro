@@ -6,25 +6,19 @@ import {
   getReflectionMemberAnchor,
   getReflectionKindName,
   ReflectionKind
-} from "../utils/typedoc.js";
-import { getSourceUrl } from "../utils/source-links.js";
-
-interface TypeDocReflection {
-  id: number;
-  name: string;
-  kind: number;
-  [key: string]: any;
-}
+} from "../utils/typedoc.ts";
+import { getSourceUrl } from "../utils/source-links.ts";
+import type { JSONOutput } from "typedoc";
 
 interface MemberBucket {
   id: string;
   label: string;
   kind: "constructor" | "properties" | "methods" | "functions" | "additional";
-  items: TypeDocReflection[];
+  items: JSONOutput.DeclarationReflection[];
 }
 
 interface Props {
-  members: TypeDocReflection[];
+  members: JSONOutput.DeclarationReflection[];
 }
 
 const { members } = Astro.props as Props;
@@ -33,7 +27,7 @@ function createBucket(
   id: MemberBucket["id"],
   label: string,
   kind: MemberBucket["kind"],
-  items: TypeDocReflection[]
+  items: JSONOutput.DeclarationReflection[]
 ): MemberBucket | null {
   return items.length > 0 ? { id, label, kind, items } : null;
 }
@@ -73,7 +67,7 @@ const memberBuckets = [
   )
 ].filter((bucket): bucket is MemberBucket => bucket !== null);
 
-function shouldShowMemberKind(member: TypeDocReflection): boolean {
+function shouldShowMemberKind(member: JSONOutput.DeclarationReflection): boolean {
   return ![
     ReflectionKind.Constructor,
     ReflectionKind.Property,
@@ -85,7 +79,7 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
   ].includes(member.kind);
 }
 
-function getMemberSourceUrl(member: TypeDocReflection): string | null {
+function getMemberSourceUrl(member: JSONOutput.DeclarationReflection): string | null {
   const source = member.sources?.[0];
   return source ? getSourceUrl(source.fileName, source.line) : null;
 }

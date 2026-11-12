@@ -1,8 +1,9 @@
 ---
 import ApiType from "./ApiType.astro";
+import type { JSONOutput } from "typedoc";
 
 interface Props {
-  reflection: Record<string, any>;
+  reflection: JSONOutput.DeclarationReflection;
 }
 
 const { reflection } = Astro.props as Props;

@@ -1,14 +1,7 @@
 ---
 import Example from "@layouts/Example.astro";
-import { withBase } from "../utils/url.js";
-
-interface ExampleCollectionEntry {
-  id: string;
-  data: {
-    title: string;
-    source: string;
-  };
-}
+import { withBase } from "../utils/url.ts";
+import type { ExampleCollectionEntry } from "../types.ts";
 
 interface Props {
   entry: ExampleCollectionEntry;

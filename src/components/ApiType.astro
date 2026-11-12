@@ -1,6 +1,7 @@
 ---
-import { getLink } from "../config/links.js";
-import { withBase } from "../utils/url.js";
+import { getLink } from "../config/links.ts";
+import { withBase } from "../utils/url.ts";
+import type { JSONOutput } from "typedoc";
 
 interface TypePart {
   text: string;
@@ -8,7 +9,7 @@ interface TypePart {
 }
 
 interface Props {
-  type: any;
+  type?: JSONOutput.SomeType | string;
 }
 
 const { type } = Astro.props as Props;
@@ -25,11 +26,13 @@ function toHref(route: string | undefined): string | undefined {
   return /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(route) ? route : withBase(route);
 }
 
-function getReferenceLink(reference: any): ResolvedTypeLink | undefined {
+function getReferenceLink(
+  reference: Extract<JSONOutput.SomeType, { type: "reference" }>
+): ResolvedTypeLink | undefined {
   const names = [
-    reference?.name,
-    reference?.qualifiedName
-  ].filter(Boolean);
+    reference.name,
+    reference.qualifiedName
+  ].filter((name): name is string => Boolean(name));
 
   for (const name of names) {
     const href = toHref(getLink(name));
@@ -50,14 +53,16 @@ function linkedTextPart(text: string): TypePart[] {
   return href ? [{ text, href }] : textPart(text);
 }
 
-function joinTypeParts(types: any[], separator: string): TypePart[] {
+function joinTypeParts(types: JSONOutput.SomeType[], separator: string): TypePart[] {
   return types.flatMap((item, index) => [
     ...(index > 0 ? textPart(separator) : []),
     ...getTypeParts(item)
   ]);
 }
 
-function formatLiteralValue(value: unknown): string {
+function formatLiteralValue(
+  value: Extract<JSONOutput.SomeType, { type: "literal" }>["value"]
+): string {
   if (value === null) {
     return "null";
   }
@@ -69,7 +74,7 @@ function formatLiteralValue(value: unknown): string {
   return `${value}`;
 }
 
-function getTypeParts(value: any): TypePart[] {
+function getTypeParts(value: JSONOutput.SomeType | string | undefined): TypePart[] {
   if (!value) {
     return [];
   }
@@ -104,7 +109,7 @@ function getTypeParts(value: any): TypePart[] {
     }
     case "array": {
       const elementParts = getTypeParts(value.elementType);
-      const needsGrouping = ["union", "intersection"].includes(value.elementType?.type);
+      const needsGrouping = value.elementType?.type === "union" || value.elementType?.type === "intersection";
 
       return [
         ...(needsGrouping ? textPart("(") : []),
@@ -176,8 +181,12 @@ function getTypeParts(value: any): TypePart[] {
     case "reflection":
       return textPart("object");
     default: {
-      const name = value.name ?? value.qualifiedName;
-      return name ? textPart(name) : textPart(value.type ?? "unknown");
+      const name = "name" in value && value.name
+        ? value.name
+        : "qualifiedName" in value
+          ? value.qualifiedName
+          : undefined;
+      return name ? textPart(name) : textPart(value.type);
     }
   }
 }

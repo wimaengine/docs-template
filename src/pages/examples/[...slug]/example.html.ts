@@ -1,16 +1,9 @@
 import { getCollection } from "astro:content";
 import type { APIRoute } from "astro";
-import { getWebsiteConfig, getWebsiteThemeStyles } from "../../../config/site.js";
-import { buildImportMap } from "../../../utils/import-map.js";
-import { withBase } from "../../../utils/url.js";
-
-interface ExampleCollectionEntry {
-  id: string;
-  data: {
-    title: string;
-    source: string;
-  };
-}
+import { getWebsiteConfig, getWebsiteThemeStyles } from "../../../config/site.ts";
+import { buildImportMap } from "../../../utils/import-map.ts";
+import { withBase } from "../../../utils/url.ts";
+import type { ExampleCollectionEntry } from "../../../types.ts";
 
 function rewriteAssetLiterals(script: string): string {
   return script.replace(

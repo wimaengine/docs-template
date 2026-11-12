@@ -1,21 +1,13 @@
 ---
 import { Code } from "astro:components";
-import { rootPackageName } from "@configs/project.js";
+import { rootPackageName } from "@configs/project.ts";
 import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
-import { withBase } from "../utils/url.js";
-import { getExamplesRoutePath } from "../config/site.js";
+import { withBase } from "../utils/url.ts";
+import { getExamplesRoutePath } from "../config/site.ts";
 import SourceLink from "../components/SourceLink.astro";
-import { getSourceUrl } from "../utils/source-links.js";
-
-interface ExampleCollectionEntry {
-  filePath: string;
-  data: {
-    title: string;
-    filePath: string;
-    source: string;
-  };
-}
+import { getSourceUrl } from "../utils/source-links.ts";
+import type { ExampleCollectionEntry } from "../types.ts";
 
 interface Props {
   entry: ExampleCollectionEntry;

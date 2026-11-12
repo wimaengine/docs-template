@@ -2,7 +2,7 @@ const MDN_BASE = "https://developer.mozilla.org/en-US/docs";
 const JAVASCRIPT_BASE = `${MDN_BASE}/Web/JavaScript/Reference/Global_Objects`;
 const WEB_API_BASE = `${MDN_BASE}/Web/API`;
 
-function makeLinks(names, base) {
+function makeLinks(names: string[], base: string): Record<string, string> {
   return Object.fromEntries(names.map((name) => [name, `${base}/${name}`]));
 }
 

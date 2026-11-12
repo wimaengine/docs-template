@@ -1,32 +1,122 @@
 import path from "node:path";
-import { projectRootDir } from "./project.js";
-import { getReflectionCategory, getReflectionKindSlug } from "../utils/typedoc.js";
+import { projectRootDir } from "./project.ts";
+import type { JSONOutput } from "typedoc";
+import { getReflectionCategory, getReflectionKindSlug } from "../utils/typedoc.ts";
+
+export interface WebsiteConfigOptions {
+  guideRoute?: string;
+  examplesRoute?: string;
+  apiRoute?: string;
+  sourceBranch?: string;
+  theme?: WebsiteThemeOptions;
+  apiEntryRoute?: ApiEntryRouteResolver;
+  guideContentDir?: string;
+  examplesContentDir?: string;
+  apiSourceDir?: string;
+  introContentPath?: string;
+}
+
+export interface WebsiteThemeColors {
+  background: `#${string}`;
+  panel: `#${string}`;
+  surface: `#${string}`;
+  surfaceRaised: `#${string}`;
+  text: `#${string}`;
+  muted: `#${string}`;
+  border: `#${string}`;
+  borderStrong: `#${string}`;
+  accent: `#${string}`;
+  accentSecondary: `#${string}`;
+  codeBackground: `#${string}`;
+  codeText: `#${string}`;
+}
+
+export interface WebsiteThemeSchemeOptions {
+  colors?: Partial<WebsiteThemeColors>;
+}
+
+export interface WebsiteThemeOptions {
+  default?: string;
+  schemes?: Record<string, WebsiteThemeSchemeOptions>;
+}
+
+export interface WebsiteThemeScheme {
+  colors: WebsiteThemeColors;
+}
+
+export interface WebsiteTheme {
+  default: string;
+  schemes: Record<string, WebsiteThemeScheme>;
+}
+
+export interface ApiRouteEntry {
+  id: string;
+  data: JSONOutput.DeclarationReflection;
+}
+
+export interface ApiPackageRouteEntry {
+  id: string;
+  data?: {
+    title?: string;
+  };
+  filePath?: string;
+}
+
+export interface ApiEntryRouteContext {
+  path: string;
+  reflection: JSONOutput.DeclarationReflection;
+  category: string | undefined;
+}
+
+export type ApiEntryRouteResolver = (
+  path: string,
+  reflection: JSONOutput.DeclarationReflection,
+  category: string | undefined
+) => string;
+
+export interface WebsiteConfig {
+  guideRoute: string;
+  examplesRoute: string;
+  apiRoute: string;
+  sourceBranch: string;
+  theme: WebsiteTheme;
+  apiEntryRoute: ApiEntryRouteResolver;
+  guideContentDir: string;
+  examplesContentDir: string;
+  apiSourceDir: string;
+  introContentPath: string;
+}
 
 const websiteConfigRegistryKey = "__WIMA_DOCS_WEBSITE_CONFIG_REGISTRY__";
 
 // Function-valued options cannot cross Astro's JSON config bridge. Keep the
 // resolver in the shared process and bridge only the serializable settings.
-function getWebsiteConfigRegistry() {
+function getWebsiteConfigRegistry(): Map<string, ApiEntryRouteResolver> | null {
   if (typeof process === "undefined") {
     return null;
   }
 
-  if (!(process[websiteConfigRegistryKey] instanceof Map)) {
-    process[websiteConfigRegistryKey] = new Map();
+  type ProcessWithConfigRegistry = typeof process & {
+    [websiteConfigRegistryKey]?: Map<string, ApiEntryRouteResolver>;
+  };
+  const runtimeProcess = process as ProcessWithConfigRegistry;
+
+  if (!(runtimeProcess[websiteConfigRegistryKey] instanceof Map)) {
+    runtimeProcess[websiteConfigRegistryKey] = new Map<string, ApiEntryRouteResolver>();
   }
 
-  return process[websiteConfigRegistryKey];
+  return runtimeProcess[websiteConfigRegistryKey] as Map<string, ApiEntryRouteResolver>;
 }
 
-function getRegisteredApiEntryRoute() {
+function getRegisteredApiEntryRoute(): ApiEntryRouteResolver | undefined {
   return getWebsiteConfigRegistry()?.get(projectRootDir);
 }
 
-function setRegisteredApiEntryRoute(routeResolver) {
+function setRegisteredApiEntryRoute(routeResolver: ApiEntryRouteResolver): void {
   getWebsiteConfigRegistry()?.set(projectRootDir, routeResolver);
 }
 
-const defaultThemeColors = Object.freeze({
+const defaultThemeColors: WebsiteThemeColors = Object.freeze({
   background: "#05070a",
   panel: "#0b1118",
   surface: "#101721",
@@ -39,18 +129,18 @@ const defaultThemeColors = Object.freeze({
   accentSecondary: "#cbeafe",
   codeBackground: "#090d13",
   codeText: "#f3f4f6"
-});
+}) as WebsiteThemeColors;
 
-const defaultWebsiteTheme = Object.freeze({
+const defaultWebsiteTheme: WebsiteTheme = Object.freeze({
   default: "default",
   schemes: Object.freeze({
     default: Object.freeze({
       colors: defaultThemeColors
     })
   })
-});
+}) as WebsiteTheme;
 
-const themeVariableNames = Object.freeze({
+const themeVariableNames: Record<keyof WebsiteThemeColors, string> = Object.freeze({
   background: "--bg",
   panel: "--panel",
   surface: "--surface-2",
@@ -65,13 +155,13 @@ const themeVariableNames = Object.freeze({
   codeText: "--code-text"
 });
 
-function defaultApiEntryRoute(_path, reflection) {
-  const kind = getReflectionKindSlug(reflection?.kind);
-  const name = reflection?.name ?? "entry";
+function defaultApiEntryRoute(_path: string, reflection: JSONOutput.DeclarationReflection): string {
+  const kind = getReflectionKindSlug(reflection.kind);
+  const name = reflection.name || "entry";
   return `${kind}/${name}`;
 }
 
-const defaultWebsiteConfig = Object.freeze({
+const defaultWebsiteConfig: Readonly<WebsiteConfig> = Object.freeze({
   guideRoute: "/guide",
   examplesRoute: "/examples",
   apiRoute: "/api",
@@ -98,9 +188,12 @@ function readEnvironmentWebsiteConfig() {
   }
 
   try {
-    const payload = JSON.parse(raw);
+    const payload = JSON.parse(raw) as {
+      root: string;
+      config: WebsiteConfigOptions;
+    };
 
-    if (payload?.root !== projectRootDir || !payload.config || typeof payload.config !== "object") {
+    if (payload.root !== projectRootDir) {
       return null;
     }
 
@@ -114,41 +207,36 @@ function readEnvironmentWebsiteConfig() {
 
 let websiteConfig = readEnvironmentWebsiteConfig() ?? resolveWebsiteConfig();
 
-function normalizeRoutePath(value, fallback) {
-  const raw = typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
+function normalizeRoutePath(value: string | undefined, fallback: string): string {
+  const raw = value?.trim() || fallback;
   const prefixed = raw.startsWith("/") ? raw : `/${raw}`;
   const normalized = prefixed.replace(/\/+$/, "");
   return normalized === "" ? "/" : normalized;
 }
 
-function normalizeContentPath(value, fallback) {
-  const raw = typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
+function normalizeContentPath(value: string | undefined, fallback: string): string {
+  const raw = value?.trim() || fallback;
   return path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(projectRootDir, raw);
 }
 
-function normalizeSourceBranch(value, fallback) {
-  const raw = typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
+function normalizeSourceBranch(value: string | undefined, fallback: string): string {
+  const raw = value?.trim() || fallback;
   return raw.replace(/^\/+|\/+$/g, "") || fallback;
 }
 
-function resolveApiEntryRoute(options, registeredApiEntryRoute) {
-  if (options.apiEntryRoute !== undefined) {
-    if (typeof options.apiEntryRoute !== "function") {
-      throw new TypeError("apiEntryRoute must be a function");
-    }
-
-    return options.apiEntryRoute;
-  }
-
-  return registeredApiEntryRoute ?? defaultWebsiteConfig.apiEntryRoute;
+function resolveApiEntryRoute(
+  options: WebsiteConfigOptions,
+  registeredApiEntryRoute?: ApiEntryRouteResolver
+): ApiEntryRouteResolver {
+  return options.apiEntryRoute ?? registeredApiEntryRoute ?? defaultWebsiteConfig.apiEntryRoute;
 }
 
-function resolveTheme(options = {}) {
+function resolveTheme(options: WebsiteThemeOptions = {}): WebsiteTheme {
   const themeOptions = options.theme ?? {};
   const schemeOptions = themeOptions.schemes ?? {};
   const schemeNames = Object.keys(schemeOptions);
   const names = schemeNames.length > 0 ? schemeNames : Object.keys(defaultWebsiteTheme.schemes);
-  const schemes = {};
+  const schemes: Record<string, WebsiteThemeScheme> = {};
 
   for (const name of names) {
     const baseScheme = defaultWebsiteTheme.schemes.default;
@@ -158,8 +246,8 @@ function resolveTheme(options = {}) {
       colors: Object.freeze({
         ...baseScheme.colors,
         ...(scheme.colors ?? {})
-      })
-    });
+      }) as WebsiteThemeColors
+    }) as WebsiteThemeScheme;
   }
 
   const requestedDefault = themeOptions.default ?? defaultWebsiteTheme.default;
@@ -168,7 +256,7 @@ function resolveTheme(options = {}) {
     ? "auto"
     : schemes[requestedDefault]
       ? requestedDefault
-      : names[0];
+      : names[0] ?? defaultWebsiteTheme.default;
 
   return Object.freeze({
     default: defaultScheme,
@@ -176,7 +264,10 @@ function resolveTheme(options = {}) {
   });
 }
 
-function resolveWebsiteConfig(options = {}, { apiEntryRoute: registeredApiEntryRoute } = {}) {
+function resolveWebsiteConfig(
+  options: WebsiteConfigOptions = {},
+  { apiEntryRoute: registeredApiEntryRoute }: { apiEntryRoute?: ApiEntryRouteResolver } = {}
+): WebsiteConfig {
   const config = {
     guideRoute: normalizeRoutePath(options.guideRoute, defaultWebsiteConfig.guideRoute),
     examplesRoute: normalizeRoutePath(options.examplesRoute, defaultWebsiteConfig.examplesRoute),
@@ -201,18 +292,25 @@ function resolveWebsiteConfig(options = {}, { apiEntryRoute: registeredApiEntryR
   return Object.freeze(config);
 }
 
-function getThemeRule(selector, scheme, indent = "") {
-  const variables = Object.entries(scheme.colors)
-    .map(([colorName, value]) => `${indent}  ${themeVariableNames[colorName]}: ${value};`)
+function getThemeRule(selector: string, scheme: WebsiteThemeScheme, indent = ""): string {
+  const variables = (Object.entries(scheme.colors) as Array<[
+    keyof WebsiteThemeColors,
+    WebsiteThemeColors[keyof WebsiteThemeColors]
+  ]>)
+    .map(([colorName, value]) => (
+      `${indent}  ${themeVariableNames[colorName]}: ${value};`
+    ))
     .join("\n");
 
   return `${indent}${selector} {\n${variables}\n${indent}}`;
 }
 
-function getWebsiteThemeStyles(theme) {
+function getWebsiteThemeStyles(theme: WebsiteTheme): string {
+  const darkScheme = theme.schemes.dark;
+  const lightScheme = theme.schemes.light;
   const supportsSystemTheme = theme.default === "auto" &&
-    theme.schemes.dark &&
-    theme.schemes.light;
+    darkScheme !== undefined &&
+    lightScheme !== undefined;
   const fallbackSchemeName = supportsSystemTheme ? "dark" : theme.default;
   const schemeStyles = Object.entries(theme.schemes).map(([name, scheme]) => {
     const selector = name === fallbackSchemeName
@@ -227,18 +325,18 @@ function getWebsiteThemeStyles(theme) {
   }
 
   schemeStyles.push(
-    `@media (prefers-color-scheme: dark) {\n${getThemeRule(':root[data-theme="auto"]', theme.schemes.dark, "  ")}\n}`,
-    `@media (prefers-color-scheme: light) {\n${getThemeRule(':root[data-theme="auto"]', theme.schemes.light, "  ")}\n}`
+    `@media (prefers-color-scheme: dark) {\n${getThemeRule(':root[data-theme="auto"]', darkScheme, "  ")}\n}`,
+    `@media (prefers-color-scheme: light) {\n${getThemeRule(':root[data-theme="auto"]', lightScheme, "  ")}\n}`
   );
 
   return schemeStyles.join("\n\n");
 }
 
-function joinRoutePath(...segments) {
-  const parts = [];
+function joinRoutePath(...segments: string[]): string {
+  const parts: string[] = [];
 
   for (const segment of segments) {
-    if (typeof segment !== "string" || segment.trim() === "") {
+    if (segment.trim() === "") {
       continue;
     }
 
@@ -248,11 +346,11 @@ function joinRoutePath(...segments) {
   return `/${parts.join("/")}`;
 }
 
-function routeToParam(value) {
+function routeToParam(value: string): string {
   return normalizeRoutePath(value, "/").replace(/^\/+/, "");
 }
 
-function getWebsiteConfig() {
+function getWebsiteConfig(): WebsiteConfig {
   // Astro evaluates astro.config.* and src/content.config.* in separate
   // module contexts. Re-read the integration config through the process
   // environment so both contexts observe the same paths.
@@ -260,7 +358,7 @@ function getWebsiteConfig() {
   return websiteConfig;
 }
 
-function setWebsiteConfig(options = {}) {
+function setWebsiteConfig(options: WebsiteConfigOptions = {}): WebsiteConfig {
   websiteConfig = resolveWebsiteConfig(options);
   setRegisteredApiEntryRoute(websiteConfig.apiEntryRoute);
 
@@ -275,16 +373,16 @@ function setWebsiteConfig(options = {}) {
   return websiteConfig;
 }
 
-function getGuideRoutePath(...segments) {
+function getGuideRoutePath(...segments: string[]): string {
   return joinRoutePath(getWebsiteConfig().guideRoute, ...segments);
 }
 
-function stripGuideOrderPrefix(value) {
+function stripGuideOrderPrefix(value: string): string {
   const stripped = value.replace(/^\d+(?:[.)_-]|\s)+/, "");
   return stripped || value;
 }
 
-function getGuideEntryRoute(entry) {
+function getGuideEntryRoute(entry: { id: string; slug?: string }): string {
   const raw = entry.slug ?? entry.id;
   const cleaned = raw.replace(/\.[^/.]+$/, "");
 
@@ -300,33 +398,33 @@ function getGuideEntryRoute(entry) {
   return getGuideRoutePath(...segments);
 }
 
-function getExamplesRoutePath(...segments) {
+function getExamplesRoutePath(...segments: string[]): string {
   return joinRoutePath(getWebsiteConfig().examplesRoute, ...segments);
 }
 
-function getApiRoutePath(...segments) {
+function getApiRoutePath(...segments: string[]): string {
   return joinRoutePath(getWebsiteConfig().apiRoute, ...segments);
 }
 
-function getApiPackageId(entry) {
-  const raw = String(entry?.id ?? "")
+function getApiPackageId(entry: { id: string }): string {
+  const raw = entry.id
     .replace(/\.(?:md|mdx)$/i, "")
     .replace(/\/README$/i, "");
 
   return raw.split("/").filter(Boolean).join("/");
 }
 
-function getApiPackageRoute(entry) {
+function getApiPackageRoute(entry: { id: string }): string {
   const packageId = getApiPackageId(entry);
 
   if (!packageId) {
-    throw new Error(`API package entry "${entry?.id ?? ""}" did not produce a package route.`);
+    throw new Error(`API package entry "${entry.id}" did not produce a package route.`);
   }
 
   return getApiRoutePath(packageId);
 }
 
-function getApiEntryRouteContext(entry) {
+function getApiEntryRouteContext(entry: ApiRouteEntry): ApiEntryRouteContext {
   return {
     path: entry.id,
     reflection: entry.data,
@@ -334,13 +432,9 @@ function getApiEntryRouteContext(entry) {
   };
 }
 
-function getApiEntryRoute(entry) {
+function getApiEntryRoute(entry: ApiRouteEntry): string {
   const { path: entryPath, reflection, category } = getApiEntryRouteContext(entry);
   const relativePath = getWebsiteConfig().apiEntryRoute(entryPath, reflection, category);
-
-  if (typeof relativePath !== "string" || relativePath.trim() === "") {
-    throw new TypeError("apiEntryRoute must return a non-empty relative path");
-  }
 
   const normalizedPath = relativePath.trim();
   const pathSegments = normalizedPath.split("/").filter(Boolean);
@@ -358,8 +452,8 @@ function getApiEntryRoute(entry) {
   return getApiRoutePath(normalizedPath);
 }
 
-function assertUniqueApiEntryRoutes(entries) {
-  const routes = new Map();
+function assertUniqueApiEntryRoutes(entries: ApiRouteEntry[]): void {
+  const routes = new Map<string, ApiRouteEntry>();
 
   for (const entry of entries) {
     const route = getApiEntryRoute(entry);
@@ -375,19 +469,19 @@ function assertUniqueApiEntryRoutes(entries) {
   }
 }
 
-function getGuideContentDir() {
+function getGuideContentDir(): string {
   return getWebsiteConfig().guideContentDir;
 }
 
-function getExamplesContentDir() {
+function getExamplesContentDir(): string {
   return getWebsiteConfig().examplesContentDir;
 }
 
-function getApiSourceDir() {
+function getApiSourceDir(): string {
   return getWebsiteConfig().apiSourceDir;
 }
 
-function getIntroContentPath() {
+function getIntroContentPath(): string {
   return getWebsiteConfig().introContentPath;
 }
 

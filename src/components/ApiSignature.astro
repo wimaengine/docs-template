@@ -3,11 +3,12 @@ import {
   getReflectionSignatures,
   getTypeParameters,
   ReflectionKind
-} from "../utils/typedoc.js";
+} from "../utils/typedoc.ts";
 import ApiType from "./ApiType.astro";
+import type { JSONOutput } from "typedoc";
 
 interface Props {
-  reflection: Record<string, any>;
+  reflection: JSONOutput.DeclarationReflection;
   name?: string;
   namePrefix?: string;
   showName?: boolean;
@@ -26,7 +27,7 @@ const typeParameters = getTypeParameters(signature);
 const returnType = reflection.kind === ReflectionKind.Constructor ? null : signature?.type;
 const displayName = name ?? (reflection.kind === ReflectionKind.Constructor ? "constructor" : reflection.name ?? "call");
 
-function getParameterName(parameter: Record<string, any>): string {
+function getParameterName(parameter: JSONOutput.ParameterReflection): string {
   const flags = parameter.flags ?? {};
   const rest = flags.isRest ? "..." : "";
   const optional = flags.isOptional && !flags.isRest ? "?" : "";

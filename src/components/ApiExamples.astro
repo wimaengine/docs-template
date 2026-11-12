@@ -1,10 +1,11 @@
 ---
 import { Code } from "astro:components";
-import { getReflectionExamples } from "../utils/typedoc.js";
+import { getReflectionExamples } from "../utils/typedoc.ts";
+import type { JSONOutput } from "typedoc";
 
 interface Props {
-  reflection: Record<string, any>;
-  signature?: Record<string, any> | null;
+  reflection: JSONOutput.SomeReflection;
+  signature?: JSONOutput.SignatureReflection | null;
 }
 
 const { reflection, signature = null } = Astro.props as Props;

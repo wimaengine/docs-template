@@ -1,15 +1,15 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { exports as resolveExports, legacy as resolveLegacy } from "resolve.exports";
-import { withBase } from "./url.js";
-import { projectRootDir, rootPackageDevUrl, rootPackageJson, rootPackageName } from "../config/project.js";
+import { exports as resolveExports, legacy as resolveLegacy, type Browser, type Exports } from "resolve.exports";
+import { withBase } from "./url.ts";
+import { projectRootDir, rootPackageDevUrl, rootPackageJson, rootPackageName } from "../config/project.ts";
 
 type PackageManifest = {
   version?: string;
   main?: string;
   module?: string;
-  browser?: string;
-  exports?: unknown;
+  browser?: Browser;
+  exports?: Exports;
   type?: string;
   jsdelivr?: string;
   unpkg?: string;
@@ -44,7 +44,11 @@ function readPackageManifest(packageName: string): PackageManifest {
   return manifest;
 }
 
-function normalizeResolvedEntry(entry: unknown): string | undefined {
+function normalizeResolvedEntry(entry: Browser | Exports.Output | false | undefined): string | undefined {
+  if (entry === false || entry === undefined) {
+    return undefined;
+  }
+
   if (typeof entry === "string") {
     const normalized = normalizeEntryPath(entry);
     return normalized === "." ? undefined : normalized;
@@ -209,12 +213,21 @@ function resolvePackageEntry(packageName: string): string | undefined {
 }
 
 function collectPackageNames(): string[] {
+  const buildOnlyPackages = new Set([
+    "astro",
+    "typedoc",
+    "typescript",
+    "wima-docs-website-template"
+  ]);
+
   return [
     ...new Set([
       ...Object.keys(rootPackageJson.dependencies ?? {}),
       ...Object.keys(rootPackageJson.devDependencies ?? {}),
     ]),
-  ].sort((a, b) => a.localeCompare(b));
+  ]
+    .filter((packageName) => !buildOnlyPackages.has(packageName))
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function buildPackageUrl(packageName: string, version: string, entry: string, isProd: boolean): string {

@@ -1,12 +1,13 @@
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createSatteriMarkdownProcessor } from "@astrojs/markdown-satteri";
-import { projectRootDir } from "../config/project.js";
-import { markdownPlugins } from "../plugins/markdown-satteri.js";
+import { projectRootDir } from "../config/project.ts";
+import { markdownPlugins } from "../plugins/markdown-satteri.ts";
 
-let markdownProcessorPromise;
+let markdownProcessorPromise:
+  Promise<Awaited<ReturnType<typeof createSatteriMarkdownProcessor>>> | undefined;
 
-function getMarkdownProcessor() {
+function getMarkdownProcessor(): Promise<Awaited<ReturnType<typeof createSatteriMarkdownProcessor>>> {
   markdownProcessorPromise ??= createSatteriMarkdownProcessor({
     features: {
       directive: true
@@ -17,7 +18,7 @@ function getMarkdownProcessor() {
   return markdownProcessorPromise;
 }
 
-function resolveSourcePath(value) {
+function resolveSourcePath(value: string | URL | undefined): string | undefined {
   if (!value) {
     return undefined;
   }
@@ -53,8 +54,11 @@ function resolveSourcePath(value) {
   return path.resolve(projectRootDir, raw);
 }
 
-export async function renderMarkdown(value, { sourcePath } = {}) {
-  const markdown = String(value ?? "").trim();
+export async function renderMarkdown(
+  value: string,
+  { sourcePath }: { sourcePath?: string | URL } = {}
+): Promise<string> {
+  const markdown = value.trim();
   if (!markdown) {
     return "";
   }

@@ -4,17 +4,11 @@ import {
   getReflectionMemberAnchor,
   getReflectionKindName,
   ReflectionKind
-} from "../utils/typedoc.js";
-
-interface TypeDocReflection {
-  id: number;
-  name: string;
-  kind: number;
-  [key: string]: any;
-}
+} from "../utils/typedoc.ts";
+import type { JSONOutput } from "typedoc";
 
 interface Props {
-  members: TypeDocReflection[];
+  members: JSONOutput.DeclarationReflection[];
   typeName?: string;
 }
 
@@ -40,14 +34,14 @@ const indexedMembers = [
   ].includes(member.kind))
 ].flat();
 
-function getIndexBadge(member: TypeDocReflection) {
+function getIndexBadge(member: JSONOutput.DeclarationReflection) {
   return getReflectionMemberBadge(member.kind) ?? {
     letter: getReflectionKindName(member.kind).charAt(0).toUpperCase(),
     name: getReflectionKindName(member.kind)
   };
 }
 
-function getIndexName(member: TypeDocReflection): string {
+function getIndexName(member: JSONOutput.DeclarationReflection): string {
   if (member.kind === ReflectionKind.Constructor || member.kind === ReflectionKind.ConstructorSignature) {
     return "constructor";
   }

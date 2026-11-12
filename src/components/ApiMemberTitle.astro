@@ -2,12 +2,13 @@
 import {
   getReflectionSignatures,
   ReflectionKind
-} from "../utils/typedoc.js";
+} from "../utils/typedoc.ts";
 import ApiSignature from "./ApiSignature.astro";
 import ApiType from "./ApiType.astro";
+import type { JSONOutput } from "typedoc";
 
 interface Props {
-  reflection: Record<string, any>;
+  reflection: JSONOutput.DeclarationReflection;
   name?: string;
 }
 

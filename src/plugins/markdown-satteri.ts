@@ -1,5 +1,7 @@
-import { withBase } from "../utils/url.js";
-import { resolveGuideLink } from "../utils/guide-links.js";
+import { withBase } from "../utils/url.ts";
+import { resolveGuideLink } from "../utils/guide-links.ts";
+import type { Image, Link } from "mdast";
+import type { MdastContent, MdastNode, MdastPluginDefinition, MdastVisitorContext } from "satteri";
 
 const alertLabels = {
   note: "Note",
@@ -9,9 +11,8 @@ const alertLabels = {
   caution: "Caution",
 };
 
-function rewriteBaseUrl(node, ctx) {
+function rewriteBaseUrl(node: Link | Image, ctx: MdastVisitorContext): void {
   if (
-    typeof node.url === "string" &&
     !/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(node.url)
   ) {
     if (node.url.startsWith("#") || node.url.startsWith("?")) {
@@ -23,9 +24,13 @@ function rewriteBaseUrl(node, ctx) {
   }
 }
 
-function createAlertNode(type, children) {
+function createAlertNode(
+  type: keyof typeof alertLabels,
+  children: Extract<MdastNode, { type: "containerDirective" }>["children"]
+): MdastContent {
   return {
-    type: "containerDirective",
+    type: "containerDirective" as const,
+    name: type,
     data: {
       hName: "div",
       hProperties: {
@@ -34,30 +39,33 @@ function createAlertNode(type, children) {
     },
     children: [
       {
-        type: "paragraph",
+        type: "paragraph" as const,
         data: {
           hProperties: {
             className: ["markdown-alert-title"],
           },
         },
-        children: [{ type: "text", value: alertLabels[type] }],
+        children: [{ type: "text" as const, value: alertLabels[type] }],
       },
       ...children,
     ],
   };
 }
 
-export const markdownPlugins = [
+export const markdownPlugins: MdastPluginDefinition[] = [
   {
     name: "directive-alerts",
-    containerDirective(node, ctx) {
-      const type = typeof node.name === "string" ? node.name.toLowerCase() : "";
+    containerDirective(
+      node: Extract<MdastNode, { type: "containerDirective" }>,
+      ctx: MdastVisitorContext
+    ): void {
+      const type = node.name.toLowerCase();
       if (!(type in alertLabels)) {
         return;
       }
 
       // Use Satteri's native directive node shape instead of raw HTML.
-      ctx.replaceNode(node, createAlertNode(type, node.children ?? []));
+      ctx.replaceNode(node, createAlertNode(type as keyof typeof alertLabels, node.children));
     },
   },
   {

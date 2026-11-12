@@ -1,5 +1,27 @@
 import { ReflectionKind } from "typedoc";
-import { getLink } from "../config/link-map.js";
+import type { JSONOutput } from "typedoc";
+import { getLink } from "../config/link-map.ts";
+
+interface ParsedJSDocLink {
+  target: string;
+  text: string;
+  codeStyle: boolean;
+}
+
+interface MarkdownLinkPart {
+  target?: Extract<JSONOutput.CommentDisplayPart, { kind: "inline-tag" }>["target"] | JSONOutput.SomeReflection;
+  text?: string;
+  tsLinkText?: string;
+}
+
+interface FormattedTypeParameter {
+  name: string;
+  type?: JSONOutput.SomeType;
+  constraint?: string;
+  default?: JSONOutput.SomeType;
+  defaultValue: string;
+  description: string;
+}
 
 const structuredTagNames = new Set([
   "@callback",
@@ -39,7 +61,7 @@ const kindLabels = new Map([
   [ReflectionKind.TypeAlias, ["Type alias", "Type aliases"]]
 ]);
 
-function normalizeText(value) {
+function normalizeText(value: string | undefined): string {
   return (value ?? "")
     .replace(/\r\n?/g, "\n")
     .split("\n")
@@ -49,23 +71,23 @@ function normalizeText(value) {
     .trim();
 }
 
-function normalizeInlineText(value) {
+function normalizeInlineText(value: string | undefined): string {
   return normalizeText(value).replace(/\s+/g, " ").trim();
 }
 
-function normalizeMarkdown(value) {
+function normalizeMarkdown(value: string | undefined): string {
   return (value ?? "")
     .replace(/\r\n?/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
-function getReflectionKindName(kind) {
+function getReflectionKindName(kind: number): string {
   const name = ReflectionKind[kind];
-  return name ?? `Kind ${kind}`;
+  return typeof name === "string" ? name : `Kind ${kind}`;
 }
 
-function getReflectionMemberBadge(kind) {
+function getReflectionMemberBadge(kind: number): { letter: string; name: string } | null {
   if ([ReflectionKind.Constructor, ReflectionKind.ConstructorSignature].includes(kind)) {
     return { letter: "C", name: "constructor" };
   }
@@ -85,8 +107,8 @@ function getReflectionMemberBadge(kind) {
   return null;
 }
 
-function getReflectionMemberAnchor(reflection) {
-  const name = String(reflection?.name ?? "").trim();
+function getReflectionMemberAnchor(reflection: JSONOutput.SomeReflection | undefined): string {
+  const name = reflection?.name.trim() ?? "";
   const anchor = name
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -96,11 +118,11 @@ function getReflectionMemberAnchor(reflection) {
   return anchor || "member";
 }
 
-function getReflectionKindSlug(kind) {
+function getReflectionKindSlug(kind: number): string {
   return getReflectionKindName(kind).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
 }
 
-function getReflectionKindLabel(kind, plural = false) {
+function getReflectionKindLabel(kind: number, plural = false): string {
   const labels = kindLabels.get(kind);
   if (labels) {
     return labels[plural ? 1 : 0];
@@ -109,27 +131,19 @@ function getReflectionKindLabel(kind, plural = false) {
   return getReflectionKindName(kind);
 }
 
-function displayPartsToText(parts) {
-  if (typeof parts === "string") {
-    return normalizeText(parts);
-  }
-
+function displayPartsToText(parts: JSONOutput.CommentDisplayPart[] | undefined): string {
   return normalizeText((parts ?? [])
-    .map((part) => typeof part === "string" ? part : part?.text ?? "")
+    .map((part) => part.text)
     .join(""));
 }
 
-function displayPartsToRawText(parts) {
-  if (typeof parts === "string") {
-    return parts;
-  }
-
+function displayPartsToRawText(parts: JSONOutput.CommentDisplayPart[] | undefined): string {
   return (parts ?? [])
-    .map((part) => typeof part === "string" ? part : part?.text ?? "")
+    .map((part) => part.text)
     .join("");
 }
 
-function escapeMarkdownLinkLabel(value) {
+function escapeMarkdownLinkLabel(value: string | undefined): string {
   return (value ?? "")
     .replaceAll("\\", "\\\\")
     .replaceAll("`", "\\`")
@@ -140,11 +154,11 @@ function escapeMarkdownLinkLabel(value) {
     .replaceAll("~", "\\~");
 }
 
-function escapeMarkdownCode(value) {
+function escapeMarkdownCode(value: string | undefined): string {
   return (value ?? "").replaceAll("`", "\\`");
 }
 
-function parseJSDocLink(value) {
+function parseJSDocLink(value: string): ParsedJSDocLink | undefined {
   const match = value.match(/^\{@(link|linkcode)\s+([^{}]+)\}$/);
   if (!match) {
     return undefined;
@@ -152,8 +166,8 @@ function parseJSDocLink(value) {
 
   const body = match[2].trim();
   const pipeIndex = body.indexOf("|");
-  let target;
-  let labelPart;
+  let target: string | undefined;
+  let labelPart = "";
 
   if (pipeIndex >= 0) {
     target = body.slice(0, pipeIndex).trim();
@@ -169,7 +183,7 @@ function parseJSDocLink(value) {
   }
 
   const importTarget = target.match(/^import\([^)]*\)\.(.+)$/);
-  const label = labelPart?.trim() || importTarget?.[1] || target;
+  const label = labelPart.trim() || importTarget?.[1] || target;
 
   return {
     target,
@@ -178,7 +192,7 @@ function parseJSDocLink(value) {
   };
 }
 
-function renderJSDocLink(value) {
+function renderJSDocLink(value: string): string | undefined {
   const part = parseJSDocLink(value);
   if (!part) {
     return undefined;
@@ -192,25 +206,50 @@ function renderJSDocLink(value) {
   return href ? `[${display}](<${href}>)` : display;
 }
 
-function convertJSDocLinks(value) {
+function convertJSDocLinks(value: string | undefined): string {
   return (value ?? "").replace(/(\{@(?:link|linkcode)\s+[^{}]+\})/g, (match) => (
     renderJSDocLink(match) ?? match
   ));
 }
 
-function getTargetName(target) {
-  return target?.name ?? target?.qualifiedName ?? "";
+function getTargetName(
+  target: Extract<JSONOutput.CommentDisplayPart, { kind: "inline-tag" }>["target"] |
+  JSONOutput.SomeReflection |
+  undefined
+): string {
+  if (typeof target === "string") {
+    return target;
+  }
+
+  if (target && typeof target === "object") {
+    return "name" in target && typeof target.name === "string"
+      ? target.name
+      : "qualifiedName" in target && typeof target.qualifiedName === "string"
+        ? target.qualifiedName
+        : "";
+  }
+
+  return "";
 }
 
-function getTargetNames(target) {
-  return [target?.name, target?.qualifiedName]
-    .filter(Boolean)
-    .map((value) => value.trim());
+function getTargetNames(
+  target: Extract<JSONOutput.CommentDisplayPart, { kind: "inline-tag" }>["target"] |
+  JSONOutput.SomeReflection |
+  undefined
+): string[] {
+  if (!target || typeof target !== "object") {
+    return [];
+  }
+
+  return [
+    "name" in target && typeof target.name === "string" ? target.name : undefined,
+    "qualifiedName" in target && typeof target.qualifiedName === "string" ? target.qualifiedName : undefined
+  ].filter((value): value is string => Boolean(value)).map((value) => value.trim());
 }
 
-function resolveMarkdownLink(part) {
-  const target = part?.target;
-  const targetValue = target?.trim?.() ?? "";
+function resolveMarkdownLink(part: MarkdownLinkPart): string | undefined {
+  const target = part.target;
+  const targetValue = typeof target === "string" ? target.trim() : "";
 
   const candidates = [
     targetValue,
@@ -218,7 +257,7 @@ function resolveMarkdownLink(part) {
     part?.tsLinkText,
     part?.text
   ]
-    .filter(Boolean);
+    .filter((candidate): candidate is string => Boolean(candidate));
 
   for (const candidate of candidates) {
     const exactLink = getLink(candidate);
@@ -242,17 +281,9 @@ function resolveMarkdownLink(part) {
   return undefined;
 }
 
-function displayPartsToMarkdown(parts) {
-  if (typeof parts === "string") {
-    return normalizeMarkdown(convertJSDocLinks(parts));
-  }
-
+function displayPartsToMarkdown(parts: JSONOutput.CommentDisplayPart[] | undefined): string {
   const markdown = (parts ?? [])
     .map((part) => {
-      if (typeof part === "string") {
-        return part;
-      }
-
       if (part?.kind === "inline-tag") {
         const label = (part.tsLinkText ?? part.text ?? getTargetName(part.target) ?? "link").trim();
         const href = resolveMarkdownLink(part);
@@ -265,22 +296,31 @@ function displayPartsToMarkdown(parts) {
 
       // TypeDoc already stores examples and @default blocks as Markdown code
       // fences. Preserve those fences instead of wrapping them a second time.
-      return part?.text ?? "";
+      return part.text;
     })
     .join("");
 
   return normalizeMarkdown(convertJSDocLinks(markdown));
 }
 
-function getReflectionComment(reflection, signature) {
-  return signature?.comment ?? reflection?.comment ?? null;
+function getReflectionComment(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature?: JSONOutput.SomeReflection | null
+): JSONOutput.Comment | undefined {
+  return signature?.comment ?? reflection?.comment;
 }
 
-function getReflectionDescriptionMarkdown(reflection, signature) {
+function getReflectionDescriptionMarkdown(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature?: JSONOutput.SomeReflection | null
+): string {
   return displayPartsToMarkdown(getReflectionComment(reflection, signature)?.summary);
 }
 
-function getReflectionTags(reflection, signature) {
+function getReflectionTags(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature?: JSONOutput.SomeReflection | null
+): string[] {
   return (getReflectionComment(reflection, signature)?.blockTags ?? [])
     .filter((tag) => !structuredTagNames.has(tag.tag))
     .map((tag) => {
@@ -290,14 +330,20 @@ function getReflectionTags(reflection, signature) {
     .filter(Boolean);
 }
 
-function getReflectionThrowsMarkdown(reflection, signature) {
+function getReflectionThrowsMarkdown(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature?: JSONOutput.SomeReflection | null
+): string[] {
   return (getReflectionComment(reflection, signature)?.blockTags ?? [])
     .filter((tag) => tag.tag === "@throws")
     .map((tag) => displayPartsToMarkdown(tag.content))
     .filter(Boolean);
 }
 
-function getReflectionExamples(reflection, signature) {
+function getReflectionExamples(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature?: JSONOutput.SomeReflection | null
+): Array<{ code: string; language: string }> {
   return (getReflectionComment(reflection, signature)?.blockTags ?? [])
     .filter((tag) => tag.tag === "@example")
     .map((tag) => {
@@ -311,16 +357,24 @@ function getReflectionExamples(reflection, signature) {
     .filter((example) => example.code);
 }
 
-function getBlockTag(reflection, signature, names) {
+function getBlockTag(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature: JSONOutput.SomeReflection | null | undefined,
+  names: string[]
+): JSONOutput.CommentTag | undefined {
   return (getReflectionComment(reflection, signature)?.blockTags ?? [])
     .find((tag) => names.includes(tag.tag));
 }
 
-function getBlockTagMarkdown(reflection, signature, names) {
+function getBlockTagMarkdown(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature: JSONOutput.SomeReflection | null | undefined,
+  names: string[]
+): string {
   return displayPartsToMarkdown(getBlockTag(reflection, signature, names)?.content);
 }
 
-function getReflectionCategory(reflection) {
+function getReflectionCategory(reflection: JSONOutput.SomeReflection | undefined): string | undefined {
   const comments = [
     getReflectionSignatures(reflection)[0]?.comment,
     reflection?.comment
@@ -341,7 +395,9 @@ function getReflectionCategory(reflection) {
   return undefined;
 }
 
-function formatLiteralValue(value) {
+function formatLiteralValue(
+  value: Extract<JSONOutput.SomeType, { type: "literal" }>["value"]
+): string {
   if (value === null) {
     return "null";
   }
@@ -353,13 +409,9 @@ function formatLiteralValue(value) {
   return `${value}`;
 }
 
-function formatType(type) {
+function formatType(type: JSONOutput.SomeType | undefined): string {
   if (!type) {
     return "";
-  }
-
-  if (typeof type === "string") {
-    return type;
   }
 
   switch (type.type) {
@@ -410,7 +462,11 @@ function formatType(type) {
     case "reflection":
       return "object";
     default: {
-      const name = type.name ?? type.qualifiedName;
+      const name = "name" in type
+        ? type.name
+        : "qualifiedName" in type
+          ? type.qualifiedName
+          : undefined;
       if (name) {
         return name;
       }
@@ -420,7 +476,7 @@ function formatType(type) {
   }
 }
 
-function formatDefaultValue(value) {
+function formatDefaultValue(value: string | JSONOutput.SomeType | undefined): string {
   if (value === undefined || value === null || value === "") {
     return "";
   }
@@ -428,8 +484,14 @@ function formatDefaultValue(value) {
   return typeof value === "string" ? value : formatType(value);
 }
 
-function getTypeParameters(reflection) {
-  return (reflection?.typeParameters ?? []).map((typeParameter) => ({
+function getTypeParameters(
+  reflection: JSONOutput.SomeReflection | undefined
+): FormattedTypeParameter[] {
+  if (!reflection || !("typeParameters" in reflection)) {
+    return [];
+  }
+
+  return (reflection.typeParameters ?? []).map((typeParameter) => ({
     name: typeParameter.name,
     type: typeParameter.type,
     constraint: formatType(typeParameter.type),
@@ -439,7 +501,7 @@ function getTypeParameters(reflection) {
   }));
 }
 
-function formatParameter(parameter) {
+function formatParameter(parameter: JSONOutput.ParameterReflection): string {
   const flags = parameter.flags ?? {};
   const name = normalizeInlineText(parameter.name || "parameter");
   const rest = flags.isRest ? "..." : "";
@@ -450,10 +512,16 @@ function formatParameter(parameter) {
   return `${rest}${name}${optional}: ${type}${defaultValue ? ` = ${defaultValue}` : ""}`;
 }
 
-function getReflectionSignatures(reflection) {
-  const signatures = [...(reflection?.signatures ?? [])];
+function getReflectionSignatures(
+  reflection: JSONOutput.SomeReflection | undefined
+): JSONOutput.SignatureReflection[] {
+  if (!reflection || reflection.variant !== "declaration") {
+    return [];
+  }
 
-  for (const signature of [reflection?.getSignature, reflection?.setSignature]) {
+  const signatures = [...(reflection.signatures ?? [])];
+
+  for (const signature of [reflection.getSignature, reflection.setSignature]) {
     if (signature && !signatures.some((item) => item.id === signature.id)) {
       signatures.push(signature);
     }
@@ -462,23 +530,33 @@ function getReflectionSignatures(reflection) {
   return signatures;
 }
 
-function getParameterDescriptionMarkdown(parameter) {
+function getParameterDescriptionMarkdown(parameter: JSONOutput.ParameterReflection): string {
   return displayPartsToMarkdown(parameter.comment?.summary);
 }
 
-function getReturnDescriptionMarkdown(reflection, signature) {
+function getReturnDescriptionMarkdown(
+  reflection: JSONOutput.SomeReflection | undefined,
+  signature: JSONOutput.SomeReflection | null | undefined
+): string {
   return getBlockTagMarkdown(reflection, signature, ["@return", "@returns"]);
 }
 
-function getSourceOrder(reflection) {
+function getSourceOrder(reflection: JSONOutput.SomeReflection | undefined): number {
   const source = reflection?.sources?.[0];
   const line = source?.line ?? Number.MAX_SAFE_INTEGER;
   const character = source?.character ?? 0;
   return line * 1000000 + character;
 }
 
-function getVisibleReflectionChildren(reflection) {
-  return [...(reflection?.children ?? [])]
+function getVisibleReflectionChildren(
+  reflection: JSONOutput.SomeReflection | undefined
+): JSONOutput.DeclarationReflection[] {
+  if (!reflection || !("children" in reflection)) {
+    return [];
+  }
+
+  return [...(reflection.children ?? [])]
+    .filter((child): child is JSONOutput.DeclarationReflection => child.variant === "declaration")
     .filter((child) => !child.flags?.isInherited)
     .sort((a, b) => getSourceOrder(a) - getSourceOrder(b) || a.name.localeCompare(b.name));
 }

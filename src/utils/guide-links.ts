@@ -1,11 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getGuideContentDir, getGuideRoutePath, getIntroContentPath } from "../config/site.js";
-import { getLink } from "../config/link-map.js";
-import { projectRootDir } from "../config/project.js";
-import { resolveSiteLink } from "../config/links.js";
+import { getGuideContentDir, getGuideRoutePath, getIntroContentPath } from "../config/site.ts";
+import { getLink } from "../config/link-map.ts";
+import { projectRootDir } from "../config/project.ts";
+import { resolveSiteLink } from "../config/links.ts";
 
-function splitLink(value) {
+function splitLink(value: string): { hash: string; pathname: string; query: string } {
   const hashIndex = value.indexOf("#");
   const withoutHash = hashIndex === -1 ? value : value.slice(0, hashIndex);
   const hash = hashIndex === -1 ? "" : value.slice(hashIndex);
@@ -18,7 +18,7 @@ function splitLink(value) {
   };
 }
 
-function appendLinkSuffix(route, query, hash) {
+function appendLinkSuffix(route: string, query: string, hash: string): string {
   const hashIndex = route.indexOf("#");
   const routePath = hashIndex === -1 ? route : route.slice(0, hashIndex);
   const routeHash = hashIndex === -1 ? "" : route.slice(hashIndex);
@@ -26,7 +26,7 @@ function appendLinkSuffix(route, query, hash) {
   return `${routePath}${query}${hash || routeHash}`;
 }
 
-function resolveSourcePath(sourcePath) {
+function resolveSourcePath(sourcePath: string | URL): string {
   if (sourcePath instanceof URL) {
     return fileURLToPath(sourcePath);
   }
@@ -36,12 +36,12 @@ function resolveSourcePath(sourcePath) {
     : path.resolve(projectRootDir, sourcePath);
 }
 
-function isInsideDirectory(directory, value) {
+function isInsideDirectory(directory: string, value: string): boolean {
   const relative = path.relative(directory, value);
   return relative !== "" && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
 
-function getProjectRelativePath(filePath) {
+function getProjectRelativePath(filePath: string): string | undefined {
   const relativePath = path.relative(projectRootDir, filePath);
 
   if (
@@ -55,7 +55,7 @@ function getProjectRelativePath(filePath) {
   return relativePath.split(path.sep).join("/");
 }
 
-function getGuideRouteTargetPath(pathname, sourceFilePath) {
+function getGuideRouteTargetPath(pathname: string, sourceFilePath: string): string {
   const guideDirectory = path.resolve(getGuideContentDir());
   const directTargetPath = path.resolve(path.dirname(sourceFilePath), decodeURIComponent(pathname));
 
@@ -79,12 +79,12 @@ function getGuideRouteTargetPath(pathname, sourceFilePath) {
   return directTargetPath;
 }
 
-function getIntroTargetRoute(targetFilePath) {
+function getIntroTargetRoute(targetFilePath: string): string | undefined {
   const targetPath = getProjectRelativePath(targetFilePath);
   return targetPath ? getLink(targetPath) : undefined;
 }
 
-function resolveProjectLink(value, sourcePath) {
+function resolveProjectLink(value: string, sourcePath: string | URL | undefined): string {
   if (!sourcePath || value === "" || value.startsWith("#")) {
     return resolveSiteLink(value);
   }
@@ -102,7 +102,7 @@ function resolveProjectLink(value, sourcePath) {
   return route ? appendLinkSuffix(route, query, hash) : resolveSiteLink(value);
 }
 
-function resolveIntroLink(value, sourcePath) {
+function resolveIntroLink(value: string, sourcePath: string | URL | undefined): string {
   if (!sourcePath || value === "" || value.startsWith("#")) {
     return resolveSiteLink(value);
   }
@@ -125,7 +125,7 @@ function resolveIntroLink(value, sourcePath) {
   return route ? appendLinkSuffix(route, query, hash) : resolveProjectLink(value, sourcePath);
 }
 
-export function resolveGuideLink(value, sourcePath) {
+export function resolveGuideLink(value: string, sourcePath?: string | URL): string {
   if (!sourcePath || value === "" || value.startsWith("#")) {
     return resolveSiteLink(value);
   }

@@ -1,7 +1,13 @@
 import { getCollection } from "astro:content";
-import { withBase } from "../utils/url.js";
-import { getApiEntryRoute, getApiPackageRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
-import { getReflectionKindLabel } from "../utils/typedoc.js";
+import { withBase } from "../utils/url.ts";
+import { getApiEntryRoute, getApiPackageRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.ts";
+import { getReflectionKindLabel } from "../utils/typedoc.ts";
+import type {
+  ApiCollectionEntry,
+  ApiPackageCollectionEntry,
+  GuideCollectionEntry,
+  IntroCollectionEntry
+} from "../types.ts";
 
 export interface NavTab {
   label: string;
@@ -13,44 +19,10 @@ export interface NavTab {
   };
 }
 
-interface GuideCollectionEntry {
-  id: string;
-  slug?: string;
-  body: string;
-  data: {
-    title: string;
-  };
-}
-
-interface IntroCollectionEntry {
-  id: string;
-  body: string;
-  data: {
-    title?: string;
-  };
-}
-
 interface ReadingOrderEntry {
   href: string;
   order: number;
   sourceOrder: number;
-}
-
-interface ApiCollectionEntry {
-  id: string;
-  data: {
-    id: number;
-    name: string;
-    kind: number;
-    [key: string]: unknown;
-  };
-}
-
-interface ApiPackageCollectionEntry {
-  id: string;
-  data: {
-    title: string;
-  };
 }
 
 interface ApiNavigationEntry {

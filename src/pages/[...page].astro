@@ -9,9 +9,9 @@ import {
   getGuideEntryRoute,
   getGuideRoutePath,
   routeToParam
-} from "@configs/site.js";
-import { withBase } from "../utils/url.js";
-import { ReflectionKind } from "../utils/typedoc.js";
+} from "@configs/site.ts";
+import { withBase } from "../utils/url.ts";
+import { ReflectionKind } from "../utils/typedoc.ts";
 import GuideIndex from "../screens/GuideIndex.astro";
 import GuideEntry from "../screens/GuideEntry.astro";
 import ExamplesIndex from "../screens/ExamplesIndex.astro";
@@ -21,24 +21,12 @@ import ApiPackageEntry from "../screens/ApiPackageEntry.astro";
 import ApiClassEntry from "../screens/ApiClassEntry.astro";
 import ApiEnumEntry from "../screens/ApiEnumEntry.astro";
 import ApiEntry from "../screens/ApiEntry.astro";
-
-interface GuideCollectionEntry {
-  id: string;
-  slug?: string;
-  body: string;
-  data: {
-    title: string;
-  };
-}
-
-interface ExampleCollectionEntry {
-  id: string;
-  data: {
-    title: string;
-    filePath: string;
-    source: string;
-  };
-}
+import type {
+  ApiCollectionEntry,
+  ApiPackageCollectionEntry,
+  ExampleCollectionEntry,
+  GuideCollectionEntry
+} from "../types.ts";
 
 interface ExampleTreeNode {
   id: string;
@@ -48,27 +36,6 @@ interface ExampleTreeNode {
     title: string;
   }>;
   children: ExampleTreeNode[];
-}
-
-interface TypeDocReflection {
-  id: number;
-  name: string;
-  kind: number;
-  [key: string]: any;
-}
-
-interface ApiCollectionEntry {
-  id: string;
-  filePath: string;
-  data: TypeDocReflection;
-}
-
-interface ApiPackageCollectionEntry {
-  id: string;
-  body: string;
-  data: {
-    title: string;
-  };
 }
 
 type PageKind =
