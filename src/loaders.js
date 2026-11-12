@@ -4,7 +4,12 @@ import { Application, ReflectionKind } from "typedoc";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { projectRootDir } from "./config/project.js";
-import { addApiLink, addApiPackageLink, addExampleLink, addGuideLink, addIntroLink } from "./config/links.js";
+import {
+  addApiPackageLinks,
+  addExampleLinks,
+  addGuideLinks,
+  addIntroLinks
+} from "./config/links.js";
 import { getApiSourceDir, getExamplesContentDir, getGuideContentDir, getIntroContentPath } from "./config/site.js";
 
 const apiSourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
@@ -29,7 +34,7 @@ function toTitle(value) {
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function createDeferredGlobLoader({ getBase, getPattern, onStart, onEntry }) {
+function createDeferredGlobLoader({ getBase, getPattern, onStart, onEntry, onEntries }) {
   return {
     name: "glob-loader",
     async load(context) {
@@ -43,12 +48,14 @@ function createDeferredGlobLoader({ getBase, getPattern, onStart, onEntry }) {
       });
 
       onStart?.();
+      const loadedEntries = [];
 
       const store = new Proxy(context.store, {
         get(target, property) {
           if (property === "set") {
             return (entry) => {
               const result = target.set(entry);
+              loadedEntries.push(entry);
               onEntry?.(entry);
               return result;
             };
@@ -60,6 +67,11 @@ function createDeferredGlobLoader({ getBase, getPattern, onStart, onEntry }) {
       });
 
       await loader.load({ ...context, store });
+
+      const entries = typeof context.store.values === "function"
+        ? [...context.store.values()]
+        : loadedEntries;
+      onEntries?.(entries);
     }
   };
 }
@@ -128,7 +140,7 @@ async function syncExampleEntries({ examplesRoot, parseData, store, meta, genera
   );
 
   const validEntries = entries.filter(Boolean).sort((a, b) => a.id.localeCompare(b.id));
-  validEntries.forEach((entry) => addExampleLink(entry));
+  addExampleLinks(validEntries);
   const digest = generateDigest(validEntries);
   const previousDigest = meta.get("examples-digest");
 
@@ -523,7 +535,6 @@ const api = defineCollection({
       store.clear();
 
       for (const entry of entries) {
-        addApiLink(entry);
         store.set({
           id: entry.id,
           data: await parseData({
@@ -547,7 +558,7 @@ const guide = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: getGuideContentDir,
     getPattern: () => "**/*.md",
-    onEntry: addGuideLink
+    onEntries: addGuideLinks
   }),
   schema: z.object({
     title: z.string()
@@ -558,7 +569,7 @@ const apiPackages = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: getApiSourceDir,
     getPattern: () => "*/README.md",
-    onEntry: addApiPackageLink
+    onEntries: addApiPackageLinks
   }),
   schema: z.object({
     title: z.string()
@@ -569,7 +580,7 @@ const intro = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: () => path.dirname(getIntroContentPath()),
     getPattern: () => path.basename(getIntroContentPath()),
-    onEntry: addIntroLink
+    onEntries: addIntroLinks
   }),
   schema: z.object({
     title: z.string().optional()

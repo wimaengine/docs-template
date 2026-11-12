@@ -41,24 +41,6 @@ function isInsideDirectory(directory, value) {
   return relative !== "" && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
 
-function slugifyGuideSegment(value) {
-  return value
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}_ -]/gu, "")
-    .replace(/ /g, "-");
-}
-
-function getGuideEntryId(relativePath) {
-  const withoutExtension = relativePath.replace(/\.[^/.]+$/, "");
-  const segments = withoutExtension
-    .split("/")
-    .filter(Boolean)
-    .map(slugifyGuideSegment);
-  const id = segments.join("/");
-
-  return id.endsWith("/index") ? id.slice(0, -"/index".length) : id;
-}
-
 function getProjectRelativePath(filePath) {
   const relativePath = path.relative(projectRootDir, filePath);
 
@@ -73,16 +55,31 @@ function getProjectRelativePath(filePath) {
   return relativePath.split(path.sep).join("/");
 }
 
-function getIntroTargetRoute(targetFilePath) {
+function getGuideRouteTargetPath(pathname, sourceFilePath) {
   const guideDirectory = path.resolve(getGuideContentDir());
+  const directTargetPath = path.resolve(path.dirname(sourceFilePath), decodeURIComponent(pathname));
 
-  if (isInsideDirectory(guideDirectory, targetFilePath)) {
-    const guideRelativePath = path.relative(guideDirectory, targetFilePath).split(path.sep).join("/");
-    const guideEntryId = getGuideEntryId(guideRelativePath);
-    const guideAlias = getGuideRoutePath(guideEntryId);
-    return getLink(guideAlias) ?? getLink(`${guideAlias}/index`);
+  if (isInsideDirectory(guideDirectory, directTargetPath)) {
+    return directTargetPath;
   }
 
+  const routePrefix = getGuideRoutePath().replace(/^\/+|\/+$/g, "");
+  const normalizedPathname = decodeURIComponent(pathname)
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "");
+
+  if (
+    routePrefix &&
+    (normalizedPathname === routePrefix || normalizedPathname.startsWith(`${routePrefix}/`))
+  ) {
+    const relativePath = normalizedPathname.slice(routePrefix.length).replace(/^\/+/, "");
+    return path.resolve(guideDirectory, relativePath);
+  }
+
+  return directTargetPath;
+}
+
+function getIntroTargetRoute(targetFilePath) {
   const targetPath = getProjectRelativePath(targetFilePath);
   return targetPath ? getLink(targetPath) : undefined;
 }
@@ -122,7 +119,7 @@ function resolveIntroLink(value, sourcePath) {
     return resolveProjectLink(value, sourcePath);
   }
 
-  const targetFilePath = path.resolve(path.dirname(sourceFilePath), decodeURIComponent(pathname));
+  const targetFilePath = getGuideRouteTargetPath(pathname, sourceFilePath);
   const route = getIntroTargetRoute(targetFilePath);
 
   return route ? appendLinkSuffix(route, query, hash) : resolveProjectLink(value, sourcePath);
@@ -146,9 +143,12 @@ export function resolveGuideLink(value, sourcePath) {
     return resolveIntroLink(value, sourcePath);
   }
 
-  const guideRelativePath = path.relative(guideDirectory, targetFilePath).split(path.sep).join("/");
-  const guideEntryId = getGuideEntryId(guideRelativePath);
-  const route = getLink(getGuideRoutePath(guideEntryId));
+  const targetPath = getProjectRelativePath(targetFilePath);
+  const exactRoute = targetPath ? getLink(targetPath) : undefined;
 
-  return route ? appendLinkSuffix(route, query, hash) : resolveSiteLink(value);
+  if (exactRoute) {
+    return appendLinkSuffix(exactRoute, query, hash);
+  }
+
+  return resolveSiteLink(value);
 }

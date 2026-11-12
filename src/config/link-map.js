@@ -64,27 +64,32 @@ function normalizeAlias(value) {
   return alias === "." ? "" : alias;
 }
 
-export function addLink(alias, route) {
-  const key = normalizeAlias(alias);
-  if (!key) {
-    return;
-  }
-
+export function addLinks(entries = []) {
   const links = readLinks();
 
-  if (!Object.prototype.hasOwnProperty.call(links, key)) {
-    links[key] = route;
-    writeLinks(links);
-    return;
-  }
+  for (const [alias, route] of entries) {
+    const key = normalizeAlias(alias);
+    if (!key) {
+      continue;
+    }
 
-  const previous = links[key];
-  if (previous !== route) {
-    // An ambiguous source/name alias must not silently link to the wrong page.
-    links[key] = null;
+    if (!Object.prototype.hasOwnProperty.call(links, key)) {
+      links[key] = route;
+      continue;
+    }
+
+    const previous = links[key];
+    if (previous !== route && previous !== null) {
+      // An ambiguous source/name alias must not silently link to the wrong page.
+      links[key] = null;
+    }
   }
 
   writeLinks(links);
+}
+
+export function addLink(alias, route) {
+  addLinks([[alias, route]]);
 }
 
 function getRegisteredLink(alias, links) {

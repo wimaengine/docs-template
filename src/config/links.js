@@ -1,39 +1,57 @@
 import {
   getApiPackageRoute,
-  getApiEntryRoute,
   getExamplesRoutePath,
-  getGuideEntryRoute,
-  getGuideRoutePath
+  getGuideEntryRoute
 } from "./site.js";
-import { addLink, getLink } from "./link-map.js";
+import { addLink, addLinks, getLink } from "./link-map.js";
 
-export { addLink, getLink };
+export { addLink, addLinks, getLink };
 
-export function addIntroLink(entry) {
-  addLink(entry.id, "/");
-}
+export function addIntroLinks(entries) {
+  const links = [];
 
-export function addGuideLink(entry) {
-  addLink(getGuideRoutePath(entry.id), getGuideEntryRoute(entry));
-}
-
-export function addExampleLink(entry) {
-  const route = getExamplesRoutePath(entry.id);
-  addLink(route, route);
-}
-
-export function addApiLink(entry) {
-  addLink(entry.data.name, getApiEntryRoute(entry));
-}
-
-export function addApiPackageLink(entry) {
-  const route = getApiPackageRoute(entry);
-
-  if (!entry.filePath) {
-    return;
+  for (const entry of entries) {
+    links.push([entry.filePath, "/"]);
   }
 
-  addLink(entry.filePath, route);
+  addLinks(links);
+}
+
+export function addGuideLinks(entries) {
+  const links = [];
+
+  for (const entry of entries) {
+    const route = getGuideEntryRoute(entry);
+    links.push([entry.filePath, route]);
+  }
+
+  addLinks(links);
+}
+
+export function addExampleLinks(entries) {
+  const links = [];
+
+  for (const entry of entries) {
+    const route = getExamplesRoutePath(entry.id);
+    links.push([entry.filePath, route]);
+  }
+
+  addLinks(links);
+}
+
+export function addApiPackageLinks(entries) {
+  const links = [];
+
+  for (const entry of entries) {
+    if (!entry.filePath) {
+      continue;
+    }
+
+    const route = getApiPackageRoute(entry);
+    links.push([entry.filePath, route]);
+  }
+
+  addLinks(links);
 }
 
 function splitLink(value) {

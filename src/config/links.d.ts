@@ -19,11 +19,11 @@ export interface LinkRouteEntry {
 }
 
 export declare function addLink(alias: string, route: string): void;
+export declare function addLinks(entries: Array<[string, string]>): void;
 export declare function getLink(alias: string): string | undefined;
-export declare function addIntroLink(entry: LinkRouteEntry): void;
-export declare function addGuideLink(entry: LinkRouteEntry): void;
-export declare function addExampleLink(entry: LinkRouteEntry): void;
-export declare function addApiLink(entry: LinkRouteEntry): void;
-export declare function addApiPackageLink(entry: LinkRouteEntry): void;
+export declare function addIntroLinks(entries: LinkRouteEntry[]): void;
+export declare function addGuideLinks(entries: LinkRouteEntry[]): void;
+export declare function addExampleLinks(entries: LinkRouteEntry[]): void;
+export declare function addApiPackageLinks(entries: LinkRouteEntry[]): void;
 
 export declare function resolveSiteLink(value: string): string;
