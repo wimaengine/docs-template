@@ -134,12 +134,12 @@ function escapeMarkdownCode(value) {
 }
 
 function parseJSDocLink(value) {
-  const match = value.match(/^\{@link\s+([^{}]+)\}$/);
+  const match = value.match(/^\{@(link|linkcode)\s+([^{}]+)\}$/);
   if (!match) {
     return undefined;
   }
 
-  const body = match[1].trim();
+  const body = match[2].trim();
   const pipeIndex = body.indexOf("|");
   let target;
   let labelPart;
@@ -162,18 +162,19 @@ function parseJSDocLink(value) {
 
   return {
     target,
-    text: label
+    text: label,
+    codeStyle: match[1] === "linkcode"
   };
 }
 
-function renderJSDocLink(value, codeStyle = false) {
+function renderJSDocLink(value) {
   const part = parseJSDocLink(value);
   if (!part) {
     return undefined;
   }
 
   const href = resolveMarkdownLink(part);
-  const display = codeStyle
+  const display = part.codeStyle
     ? `\`${escapeMarkdownCode(part.text)}\``
     : escapeMarkdownLinkLabel(part.text);
 
@@ -181,8 +182,8 @@ function renderJSDocLink(value, codeStyle = false) {
 }
 
 function convertJSDocLinks(value) {
-  return (value ?? "").replace(/(`?)(\{@link\s+[^{}]+\})(`?)/g, (match, openingTick, link, closingTick) => (
-    renderJSDocLink(link, openingTick && closingTick) ?? match
+  return (value ?? "").replace(/(\{@(?:link|linkcode)\s+[^{}]+\})/g, (match) => (
+    renderJSDocLink(match) ?? match
   ));
 }
 
