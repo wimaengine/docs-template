@@ -7,6 +7,8 @@ import DocLayout from "@layouts/DocLayout.astro";
 import ApiReflection from "../components/ApiReflection.astro";
 import ApiMemberIndex from "../components/ApiMemberIndex.astro";
 import ApiSurface from "../components/ApiSurface.astro";
+import SourceLink from "../components/SourceLink.astro";
+import { getSourceUrl } from "../utils/source-links.js";
 import {
   getReflectionDescriptionMarkdown,
   getReflectionMemberAnchor,
@@ -25,6 +27,7 @@ interface TypeDocReflection {
 
 interface ApiCollectionEntry {
   id: string;
+  filePath: string;
   data: TypeDocReflection;
 }
 
@@ -35,11 +38,18 @@ interface Props {
 const { entry } = Astro.props as Props;
 const reflection = entry.data;
 const sourcePath = reflection.sources?.[0]?.fileName;
+const source = reflection.sources?.[0];
+const sourceUrl = getSourceUrl(entry.filePath || sourcePath, source?.line);
 const signature = getReflectionSignatures(reflection)[0];
 const description = getReflectionDescriptionMarkdown(reflection, signature);
 const tags = getReflectionTags(reflection, signature);
 const members = getVisibleReflectionChildren(reflection)
   .filter((member) => member.kind === ReflectionKind.EnumMember);
+
+function getMemberSourceUrl(member: TypeDocReflection): string | null {
+  const memberSource = member.sources?.[0];
+  return memberSource ? getSourceUrl(memberSource.fileName, memberSource.line) : null;
+}
 ---
 
 <DocLayout
@@ -52,6 +62,7 @@ const members = getVisibleReflectionChildren(reflection)
       <header class="api-header">
         <p class="section-label">Enum</p>
         <h1>{reflection.name}</h1>
+        {sourceUrl ? <SourceLink href={sourceUrl} /> : null}
         {description ? <ApiMarkdown content={description} className="lead" sourcePath={sourcePath} /> : null}
         {tags.length > 0 ? (
           <div class="notes">
@@ -69,14 +80,19 @@ const members = getVisibleReflectionChildren(reflection)
           </summary>
           <hr class="api-group-rule" />
           <div class="member-list">
-            {members.map((member) => (
-              <article class="member-section" id={getReflectionMemberAnchor(member)}>
-                <header class="member-header">
-                  <h3>{member.name}</h3>
-                </header>
-                <ApiReflection reflection={member} />
-              </article>
-            ))}
+            {members.map((member) => {
+              const sourceUrl = getMemberSourceUrl(member);
+
+              return (
+                <article class="member-section" id={getReflectionMemberAnchor(member)}>
+                  <header class="member-header">
+                    <h3>{member.name}</h3>
+                    {sourceUrl ? <SourceLink href={sourceUrl} /> : null}
+                  </header>
+                  <ApiReflection reflection={member} />
+                </article>
+              );
+            })}
           </div>
         </details>
       ) : null}

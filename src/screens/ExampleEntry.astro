@@ -5,8 +5,11 @@ import { sidebarTabs } from "@configs";
 import DocLayout from "@layouts/DocLayout.astro";
 import { withBase } from "../utils/url.js";
 import { getExamplesRoutePath } from "../config/site.js";
+import SourceLink from "../components/SourceLink.astro";
+import { getSourceUrl } from "../utils/source-links.js";
 
 interface ExampleCollectionEntry {
+  filePath: string;
   data: {
     title: string;
     filePath: string;
@@ -21,6 +24,7 @@ interface Props {
 
 const { entry, sampleUrl } = Astro.props as Props;
 const title = entry.data.title;
+const sourceUrl = getSourceUrl(entry.filePath, 1);
 ---
 
 <DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs}>
@@ -37,13 +41,23 @@ const title = entry.data.title;
       loading="lazy"
     />
   </div>
-  <p>Source file: {entry.data.filePath}</p>
+  <p class="source-meta">
+    Source file:{" "}
+    {sourceUrl ? <SourceLink href={sourceUrl} text={entry.data.filePath} /> : entry.data.filePath}
+  </p>
   <div class="source-code">
     <Code code={entry.data.source} lang="js" />
   </div>
 </DocLayout>
 
 <style>
+  .source-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .example-frame {
     position: relative;
     width: 100%;

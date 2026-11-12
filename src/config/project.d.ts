@@ -9,6 +9,7 @@ export interface RootPackageJson {
   type?: string;
   jsdelivr?: string;
   unpkg?: string;
+  repository?: string | { type?: string; url?: string };
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 }

@@ -1,0 +1,26 @@
+---
+interface Props {
+  href: string;
+  text?: string;
+}
+
+const { href, text = "View source" } = Astro.props as Props;
+---
+
+<a class="source-link" href={href} target="_blank" rel="noreferrer">{text}</a>
+
+<style>
+  .source-link {
+    color: var(--accent);
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .source-link:hover,
+  .source-link:focus-visible {
+    color: var(--accent-secondary);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+</style>

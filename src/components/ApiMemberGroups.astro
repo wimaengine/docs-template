@@ -1,11 +1,13 @@
 ---
 import ApiMemberTitle from "./ApiMemberTitle.astro";
 import ApiReflection from "./ApiReflection.astro";
+import SourceLink from "./SourceLink.astro";
 import {
   getReflectionMemberAnchor,
   getReflectionKindName,
   ReflectionKind
 } from "../utils/typedoc.js";
+import { getSourceUrl } from "../utils/source-links.js";
 
 interface TypeDocReflection {
   id: number;
@@ -82,6 +84,11 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
     ReflectionKind.ConstructorSignature
   ].includes(member.kind);
 }
+
+function getMemberSourceUrl(member: TypeDocReflection): string | null {
+  const source = member.sources?.[0];
+  return source ? getSourceUrl(source.fileName, source.line) : null;
+}
 ---
 
 <div class="api-sections">
@@ -93,22 +100,27 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
       </summary>
       <hr class="api-group-rule" />
       <div class="member-list">
-        {bucket.items.map((member) => (
-          <article class="member-section" id={getReflectionMemberAnchor(member)}>
-            <header class="member-header">
-              <h3>
-                <ApiMemberTitle
-                  reflection={member}
-                  name={bucket.kind === "constructor" ? "constructor" : undefined}
-                />
-              </h3>
-              {shouldShowMemberKind(member) ? (
-                <p class="member-kind">{getReflectionKindName(member.kind)}</p>
-              ) : null}
-            </header>
-            <ApiReflection reflection={member} />
-          </article>
-        ))}
+        {bucket.items.map((member) => {
+          const sourceUrl = getMemberSourceUrl(member);
+
+          return (
+            <article class="member-section" id={getReflectionMemberAnchor(member)}>
+              <header class="member-header">
+                <h3>
+                  <ApiMemberTitle
+                    reflection={member}
+                    name={bucket.kind === "constructor" ? "constructor" : undefined}
+                  />
+                </h3>
+                {sourceUrl ? <SourceLink href={sourceUrl} /> : null}
+                {shouldShowMemberKind(member) ? (
+                  <p class="member-kind">{getReflectionKindName(member.kind)}</p>
+                ) : null}
+              </header>
+              <ApiReflection reflection={member} />
+            </article>
+          );
+        })}
       </div>
     </details>
   ))}

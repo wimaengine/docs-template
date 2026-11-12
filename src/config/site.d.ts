@@ -2,6 +2,7 @@ export interface WebsiteConfigOptions {
   guideRoute?: string;
   examplesRoute?: string;
   apiRoute?: string;
+  sourceBranch?: string;
   theme?: WebsiteThemeOptions;
   apiEntryRoute?: ApiEntryRouteResolver;
   guideContentDir?: string;
@@ -79,6 +80,7 @@ export interface WebsiteConfig {
   guideRoute: string;
   examplesRoute: string;
   apiRoute: string;
+  sourceBranch: string;
   theme: WebsiteTheme;
   apiEntryRoute: ApiEntryRouteResolver;
   guideContentDir: string;

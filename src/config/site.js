@@ -75,6 +75,7 @@ const defaultWebsiteConfig = Object.freeze({
   guideRoute: "/guide",
   examplesRoute: "/examples",
   apiRoute: "/api",
+  sourceBranch: "main",
   theme: defaultWebsiteTheme,
   apiEntryRoute: defaultApiEntryRoute,
   guideContentDir: "content/guide",
@@ -123,6 +124,11 @@ function normalizeRoutePath(value, fallback) {
 function normalizeContentPath(value, fallback) {
   const raw = typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
   return path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(projectRootDir, raw);
+}
+
+function normalizeSourceBranch(value, fallback) {
+  const raw = typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
+  return raw.replace(/^\/+|\/+$/g, "") || fallback;
 }
 
 function resolveApiEntryRoute(options, registeredApiEntryRoute) {
@@ -175,6 +181,7 @@ function resolveWebsiteConfig(options = {}, { apiEntryRoute: registeredApiEntryR
     guideRoute: normalizeRoutePath(options.guideRoute, defaultWebsiteConfig.guideRoute),
     examplesRoute: normalizeRoutePath(options.examplesRoute, defaultWebsiteConfig.examplesRoute),
     apiRoute: normalizeRoutePath(options.apiRoute, defaultWebsiteConfig.apiRoute),
+    sourceBranch: normalizeSourceBranch(options.sourceBranch, defaultWebsiteConfig.sourceBranch),
     theme: resolveTheme(options),
     apiEntryRoute: resolveApiEntryRoute(options, registeredApiEntryRoute),
     guideContentDir: normalizeContentPath(options.guideContentDir, defaultWebsiteConfig.guideContentDir),
