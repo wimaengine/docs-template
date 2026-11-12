@@ -286,6 +286,64 @@ function getApiEntryId(relativePath, reflection) {
   return `${baseId}/${entrySlug}`;
 }
 
+function getJsDocComment(source, line) {
+  if (!source || !Number.isInteger(line) || line < 1) {
+    return "";
+  }
+
+  const lines = source.split(/\r?\n/);
+  let end = line - 2;
+
+  while (end >= 0 && lines[end].trim() === "") {
+    end -= 1;
+  }
+
+  if (end < 0 || !lines[end].trim().endsWith("*/")) {
+    return "";
+  }
+
+  let start = end;
+  while (start >= 0 && !lines[start].includes("/**")) {
+    start -= 1;
+  }
+
+  return start >= 0 ? lines.slice(start, end + 1).join("\n") : "";
+}
+
+function getJsDocRelationTypes(source, line, tagName) {
+  const comment = getJsDocComment(source, line);
+  if (!comment) {
+    return [];
+  }
+
+  const pattern = new RegExp(`@${tagName}\\s+(?:\\{([^}]+)\\}|([^\\s*]+))`, "g");
+  const types = [];
+
+  for (const match of comment.matchAll(pattern)) {
+    const name = (match[1] ?? match[2] ?? "").trim();
+    if (!name) {
+      continue;
+    }
+
+    types.push({
+      type: "reference",
+      name,
+      qualifiedName: name,
+      typeArguments: []
+    });
+  }
+
+  return types;
+}
+
+async function getSourceText(filePath, sourceCache) {
+  if (!sourceCache.has(filePath)) {
+    sourceCache.set(filePath, await readFile(filePath, "utf8"));
+  }
+
+  return sourceCache.get(filePath);
+}
+
 async function getApiTsConfigPath() {
   const candidates = [
     path.resolve(projectRootDir, ".configs/tsconfig.lib.json"),
@@ -350,12 +408,32 @@ async function loadApiEntries() {
   const sourceFiles = [...new Set(filePaths)];
   const reflections = collectTopLevelReflections(serializedProject.children);
   const entries = new Map();
+  const sourceCache = new Map();
 
   for (const reflection of reflections) {
     const filePath = resolveReflectionSourcePath(reflection, sourceFiles, apiRoot);
 
     if (!filePath) {
       continue;
+    }
+
+    if (reflection.kind === ReflectionKind.Class) {
+      const source = await getSourceText(filePath, sourceCache);
+      const sourceLine = reflection.sources?.[0]?.line;
+
+      if (!reflection.extendedTypes?.length) {
+        const extendedTypes = getJsDocRelationTypes(source, sourceLine, "extends");
+        if (extendedTypes.length > 0) {
+          reflection.extendedTypes = extendedTypes;
+        }
+      }
+
+      if (!reflection.implementedTypes?.length) {
+        const implementedTypes = getJsDocRelationTypes(source, sourceLine, "implements");
+        if (implementedTypes.length > 0) {
+          reflection.implementedTypes = implementedTypes;
+        }
+      }
     }
 
     const relativePath = path.relative(apiRoot, filePath).split(path.sep).join("/");

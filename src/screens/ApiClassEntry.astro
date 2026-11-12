@@ -3,6 +3,7 @@ import { rootPackageName } from "@configs/project.js";
 import { sidebarTabs } from "@configs";
 import ApiExamples from "../components/ApiExamples.astro";
 import ApiMarkdown from "../components/ApiMarkdown.astro";
+import ApiRelations from "../components/ApiRelations.astro";
 import DocLayout from "@layouts/DocLayout.astro";
 import ApiMemberGroups from "../components/ApiMemberGroups.astro";
 import ApiMemberIndex from "../components/ApiMemberIndex.astro";
@@ -50,6 +51,7 @@ const tags = getReflectionTags(reflection, signature);
       <header class="api-header">
         <p class="section-label">{getReflectionKindName(reflection.kind)}</p>
         <h1>{reflection.name}</h1>
+        <ApiRelations reflection={reflection} />
         {description ? <ApiMarkdown content={description} className="lead" sourcePath={sourcePath} /> : null}
         {tags.length > 0 ? (
           <div class="notes">

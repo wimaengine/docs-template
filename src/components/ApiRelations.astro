@@ -1,0 +1,53 @@
+---
+import ApiType from "./ApiType.astro";
+
+interface Props {
+  reflection: Record<string, any>;
+}
+
+const { reflection } = Astro.props as Props;
+const relations = [
+  { label: "Extends", types: reflection.extendedTypes ?? [] },
+  { label: "Implements", types: reflection.implementedTypes ?? [] }
+].filter((relation) => relation.types.length > 0);
+---
+
+{relations.length > 0 ? (
+  <div class="api-relations">
+    {relations.map((relation) => (
+      <p class="api-relation">
+        <span class="api-relation-label">{relation.label}</span>
+        {relation.types.map((type, index) => (
+          <>
+            {index > 0 ? ", " : null}
+            <ApiType type={type} />
+          </>
+        ))}
+      </p>
+    ))}
+  </div>
+) : null}
+
+<style>
+  .api-relations {
+    display: grid;
+    gap: 0.3rem;
+    margin-top: 0.1rem;
+  }
+
+  .api-relation {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .api-relation-label {
+    display: inline-block;
+    min-width: 6.2rem;
+    color: var(--text);
+    font-size: 0.78em;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+</style>
