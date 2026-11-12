@@ -29,6 +29,11 @@ export function website(options: WebsiteConfigOptions = {}): AstroIntegration {
           entrypoint: "wima-docs-website-template/routes/examples/[...slug]/example.html.ts",
         });
 
+        injectRoute({
+          pattern: "/search-index.json",
+          entrypoint: "wima-docs-website-template/routes/search-index.json.ts",
+        });
+
         updateConfig({
           site: config.site ?? rootPackageJson.homepage,
           vite: {

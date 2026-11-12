@@ -40,6 +40,7 @@ const {
 const hasPageOutline = headings.some((heading) => heading.depth > 1);
 const hasApiPanel = rightPanel === "api";
 const { theme, seo } = getWebsiteConfig();
+const searchIndexUrl = withBase("/search-index.json");
 const themeSchemeNames = Object.keys(theme.schemes);
 const supportsAutoTheme = Boolean(theme.schemes.dark && theme.schemes.light);
 const themeOptions = supportsAutoTheme
@@ -204,9 +205,113 @@ function resolveLogoPath(value: string): string {
         display: inline-flex;
       }
 
+      .global-search {
+        position: relative;
+        flex: 0 1 24rem;
+        width: min(24rem, 40vw);
+        margin-left: auto;
+      }
+
+      .global-search-label,
+      .global-search-status {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .global-search-input {
+        width: 100%;
+        height: 2.25rem;
+        padding: 0.35rem 0.7rem;
+        border: 1px solid var(--border);
+        border-radius: 0.45rem;
+        outline: none;
+        background: var(--surface-2);
+        color: var(--text);
+        font: inherit;
+      }
+
+      .global-search-input::placeholder {
+        color: var(--muted);
+      }
+
+      .global-search-input:hover {
+        border-color: var(--accent-secondary);
+      }
+
+      .global-search-input:focus-visible {
+        border-color: var(--accent);
+      }
+
+      .global-search-results {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        left: 0;
+        z-index: 1100;
+        max-height: min(70vh, 28rem);
+        overflow-y: auto;
+        border-radius: 0.6rem;
+        background: var(--panel);
+        box-shadow: 0 14px 30px #00000026;
+      }
+
+      .global-search-results[hidden] {
+        display: none;
+      }
+
+      .global-search-results-list {
+        list-style: none;
+        margin: 0;
+        padding: 0.35rem;
+      }
+
+      .global-search-result {
+        display: grid;
+        gap: 0.2rem;
+        padding: 0.65rem 0.7rem;
+        border-radius: 0.4rem;
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      .global-search-result:hover,
+      .global-search-result:focus-visible {
+        background: var(--surface-2);
+        color: var(--text);
+      }
+
+      .global-search-result:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+
+      .global-search-result-title {
+        overflow-wrap: anywhere;
+        font-weight: 700;
+      }
+
+      .global-search-result-meta {
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .global-search-empty {
+        margin: 0;
+        padding: 0.75rem;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
       .settings {
         position: relative;
-        margin-left: auto;
+        flex: 0 0 auto;
       }
 
       .settings-toggle {
@@ -842,6 +947,21 @@ function resolveLogoPath(value: string): string {
         }
       }
 
+      @media (max-width: 600px) {
+        .site-brand-logo {
+          max-width: 7rem;
+        }
+
+        .global-search {
+          flex-basis: 12rem;
+          width: auto;
+        }
+
+        .global-search-input {
+          padding-inline: 0.55rem;
+        }
+      }
+
       @media (min-width: 901px) {
         body:not(.sidebar-collapsed) .menu-toggle span:nth-child(1) {
           transform: translate(-50%, -50%) rotate(45deg);
@@ -912,6 +1032,27 @@ function resolveLogoPath(value: string): string {
               </picture>
             ) : seo.siteName}
           </a>
+          <div
+            class="global-search"
+            data-search-root
+            data-search-index={searchIndexUrl}
+            role="search"
+          >
+            <label class="global-search-label" for="global-search-input">Search documentation</label>
+            <input
+              class="global-search-input"
+              id="global-search-input"
+              type="search"
+              placeholder="Search documentation"
+              autocomplete="off"
+              aria-controls="global-search-results"
+              aria-expanded="false"
+            />
+            <div class="global-search-results" id="global-search-results" hidden>
+              <p class="global-search-status" id="global-search-status" role="status" aria-live="polite"></p>
+              <ul class="global-search-results-list" id="global-search-results-list"></ul>
+            </div>
+          </div>
           <div class="settings">
             <button
               class="settings-toggle"
@@ -1024,6 +1165,205 @@ function resolveLogoPath(value: string): string {
 
       desktopViewport.addEventListener("change", syncSidebarMode);
       syncSidebarMode();
+
+      const searchRoot = document.querySelector("[data-search-root]");
+      const searchInput = document.getElementById("global-search-input");
+      const searchResults = document.getElementById("global-search-results");
+      const searchStatus = document.getElementById("global-search-status");
+      const searchResultsList = document.getElementById("global-search-results-list");
+      const searchIndexUrl = searchRoot instanceof HTMLElement
+        ? searchRoot.dataset.searchIndex
+        : undefined;
+      let searchIndexPromise;
+      let searchRequest = 0;
+
+      const setSearchOpen = (open) => {
+        if (!(searchInput instanceof HTMLInputElement) ||
+            !(searchResults instanceof HTMLElement)) {
+          return;
+        }
+
+        searchResults.hidden = !open;
+        searchInput.setAttribute("aria-expanded", open ? "true" : "false");
+      };
+
+      const closeSearch = (restoreFocus = false) => {
+        setSearchOpen(false);
+        if (searchStatus instanceof HTMLElement) {
+          searchStatus.textContent = "";
+        }
+        if (searchResultsList instanceof HTMLElement) {
+          searchResultsList.replaceChildren();
+        }
+        if (restoreFocus && searchInput instanceof HTMLInputElement) {
+          searchInput.focus();
+        }
+      };
+
+      const getSearchIndex = () => {
+        if (!searchIndexPromise && searchIndexUrl) {
+          searchIndexPromise = Promise.all([
+            import("flexsearch"),
+            fetch(searchIndexUrl).then((response) => {
+              if (!response.ok) {
+                throw new Error(`Search index request failed with ${response.status}`);
+              }
+
+              return response.json();
+            })
+          ]).then(([flexSearchModule, entries]) => {
+            const flexSearch = flexSearchModule.default ?? flexSearchModule;
+            const index = new flexSearch.Index({ tokenize: "forward", resolution: 9 });
+            const entriesById = new Map();
+
+            entries.forEach((entry) => {
+              if (!entry?.id || !entry.title || !entry.href) {
+                return;
+              }
+
+              entriesById.set(entry.id, entry);
+              index.add(
+                entry.id,
+                [entry.title, entry.description, entry.content].filter(Boolean).join(" ")
+              );
+            });
+
+            return { entriesById, index };
+          });
+        }
+
+        return searchIndexPromise;
+      };
+
+      const searchKindLabels = {
+        intro: "Overview",
+        guide: "Guide",
+        example: "Example",
+        "api-package": "API package",
+        api: "API",
+        "api-member": "API member"
+      };
+
+      const renderSearchResults = (matches, emptyMessage = "No matching documentation found.") => {
+        if (!(searchResultsList instanceof HTMLElement)) {
+          return;
+        }
+
+        searchResultsList.replaceChildren();
+
+        if (matches.length === 0) {
+          const item = document.createElement("li");
+          item.className = "global-search-empty";
+          item.textContent = emptyMessage;
+          searchResultsList.append(item);
+          return;
+        }
+
+        for (const entry of matches) {
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          const title = document.createElement("span");
+          const meta = document.createElement("span");
+
+          link.className = "global-search-result";
+          link.href = entry.href;
+          title.className = "global-search-result-title";
+          title.textContent = entry.title;
+          meta.className = "global-search-result-meta";
+          meta.textContent = searchKindLabels[entry.kind] ?? "Documentation";
+          link.append(title, meta);
+          item.append(link);
+          searchResultsList.append(item);
+        }
+      };
+
+      const updateSearchResults = async () => {
+        if (!(searchInput instanceof HTMLInputElement)) {
+          return;
+        }
+
+        const query = searchInput.value.trim();
+        const request = ++searchRequest;
+
+        if (!query) {
+          closeSearch();
+          return;
+        }
+
+        setSearchOpen(true);
+        if (searchStatus instanceof HTMLElement) {
+          searchStatus.textContent = "Searching…";
+        }
+
+        try {
+          const searchData = await getSearchIndex();
+          if (!searchData || request !== searchRequest) {
+            return;
+          }
+
+          const resultIds = searchData.index.search(query, 12);
+          const matches = resultIds
+            .map((id) => searchData.entriesById.get(String(id)))
+            .filter(Boolean);
+
+          renderSearchResults(matches);
+          if (searchStatus instanceof HTMLElement) {
+            searchStatus.textContent = matches.length === 0
+              ? "No matching documentation found."
+              : `${matches.length} result${matches.length === 1 ? "" : "s"} found.`;
+          }
+        } catch {
+          if (request !== searchRequest) {
+            return;
+          }
+
+          renderSearchResults([], "Search is unavailable right now.");
+          if (searchStatus instanceof HTMLElement) {
+            searchStatus.textContent = "Search is unavailable right now.";
+          }
+        }
+      };
+
+      if (searchInput instanceof HTMLInputElement && searchRoot instanceof HTMLElement) {
+        searchInput.addEventListener("input", updateSearchResults);
+        searchInput.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            closeSearch(true);
+          }
+
+          if (event.key === "ArrowDown" &&
+              searchResults instanceof HTMLElement &&
+              !searchResults.hidden) {
+            const firstResult = searchResultsList?.querySelector("a");
+            if (firstResult instanceof HTMLElement) {
+              event.preventDefault();
+              firstResult.focus();
+            }
+          }
+        });
+
+        searchResultsList?.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            closeSearch(true);
+          }
+        });
+
+        searchRoot.addEventListener("focusout", (event) => {
+          if (!(event.relatedTarget instanceof Node) || !searchRoot.contains(event.relatedTarget)) {
+            window.setTimeout(() => {
+              if (!searchRoot.matches(":focus-within")) {
+                closeSearch();
+              }
+            }, 0);
+          }
+        });
+
+        document.addEventListener("click", (event) => {
+          if (event.target instanceof Node && !searchRoot.contains(event.target)) {
+            closeSearch();
+          }
+        });
+      }
 
       const settingsToggle = document.getElementById("settings-toggle");
       const settingsDropdown = document.getElementById("settings-dropdown");

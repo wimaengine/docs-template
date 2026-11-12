@@ -55,3 +55,20 @@ export interface ExampleCollectionEntry {
     source: string;
   };
 }
+
+export type SearchEntryKind =
+  | "intro"
+  | "guide"
+  | "example"
+  | "api-package"
+  | "api"
+  | "api-member";
+
+export interface SearchEntry {
+  id: string;
+  title: string;
+  href: string;
+  kind: SearchEntryKind;
+  description?: string;
+  content?: string;
+}
