@@ -157,7 +157,12 @@ function resolveTheme(options = {}) {
   }
 
   const requestedDefault = themeOptions.default ?? defaultWebsiteTheme.default;
-  const defaultScheme = schemes[requestedDefault] ? requestedDefault : names[0];
+  const supportsSystemTheme = names.includes("dark") && names.includes("light");
+  const defaultScheme = requestedDefault === "auto" && supportsSystemTheme
+    ? "auto"
+    : schemes[requestedDefault]
+      ? requestedDefault
+      : names[0];
 
   return Object.freeze({
     default: defaultScheme,
@@ -189,19 +194,37 @@ function resolveWebsiteConfig(options = {}, { apiEntryRoute: registeredApiEntryR
   return Object.freeze(config);
 }
 
-function getWebsiteThemeStyles(theme) {
-  return Object.entries(theme.schemes)
-    .map(([name, scheme]) => {
-      const selector = name === theme.default
-        ? `:root,\n:root[data-theme="${name}"]`
-        : `:root[data-theme="${name}"]`;
-      const variables = Object.entries(scheme.colors)
-        .map(([colorName, value]) => `  ${themeVariableNames[colorName]}: ${value};`)
-        .join("\n");
+function getThemeRule(selector, scheme, indent = "") {
+  const variables = Object.entries(scheme.colors)
+    .map(([colorName, value]) => `${indent}  ${themeVariableNames[colorName]}: ${value};`)
+    .join("\n");
 
-      return `${selector} {\n${variables}\n}`;
-    })
-    .join("\n\n");
+  return `${indent}${selector} {\n${variables}\n${indent}}`;
+}
+
+function getWebsiteThemeStyles(theme) {
+  const supportsSystemTheme = theme.default === "auto" &&
+    theme.schemes.dark &&
+    theme.schemes.light;
+  const fallbackSchemeName = supportsSystemTheme ? "dark" : theme.default;
+  const schemeStyles = Object.entries(theme.schemes).map(([name, scheme]) => {
+    const selector = name === fallbackSchemeName
+      ? `:root,\n:root[data-theme="${name}"]`
+      : `:root[data-theme="${name}"]`;
+
+    return getThemeRule(selector, scheme);
+  });
+
+  if (!supportsSystemTheme) {
+    return schemeStyles.join("\n\n");
+  }
+
+  schemeStyles.push(
+    `@media (prefers-color-scheme: dark) {\n${getThemeRule(':root[data-theme="auto"]', theme.schemes.dark, "  ")}\n}`,
+    `@media (prefers-color-scheme: light) {\n${getThemeRule(':root[data-theme="auto"]', theme.schemes.light, "  ")}\n}`
+  );
+
+  return schemeStyles.join("\n\n");
 }
 
 function joinRoutePath(...segments) {

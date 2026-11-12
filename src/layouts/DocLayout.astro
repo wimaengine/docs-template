@@ -24,7 +24,11 @@ const { title = rootPackageName, tabs = [], headings = [], rightPanel } = Astro.
 const hasPageOutline = headings.some((heading) => heading.depth > 1);
 const hasApiPanel = rightPanel === "api";
 const { theme } = getWebsiteConfig();
-const themeNames = Object.keys(theme.schemes);
+const themeSchemeNames = Object.keys(theme.schemes);
+const supportsAutoTheme = Boolean(theme.schemes.dark && theme.schemes.light);
+const themeOptions = supportsAutoTheme
+  ? ["auto", ...themeSchemeNames.filter((name) => name !== "auto")]
+  : themeSchemeNames;
 const themeStyles = getWebsiteThemeStyles(theme);
 ---
 
@@ -806,7 +810,7 @@ const themeStyles = getWebsiteThemeStyles(theme);
                 <div class="settings-row">
                   <label for="site-theme">Theme</label>
                   <select id="site-theme" name="site-theme">
-                    {themeNames.map((name) => (
+                    {themeOptions.map((name) => (
                       <option value={name} selected={name === theme.default}>{name}</option>
                     ))}
                   </select>
@@ -906,6 +910,12 @@ const themeStyles = getWebsiteThemeStyles(theme);
           ? Array.from(themeSelect.options, (option) => option.value)
           : []
       );
+      const supportsAutoTheme = themeNames.has("auto") &&
+        themeNames.has("dark") &&
+        themeNames.has("light");
+      const systemTheme = supportsAutoTheme
+        ? window.matchMedia("(prefers-color-scheme: dark)")
+        : null;
 
       const readStoredTheme = () => {
         try {
@@ -921,7 +931,11 @@ const themeStyles = getWebsiteThemeStyles(theme);
           return;
         }
 
-        document.documentElement.dataset.theme = name;
+        const resolvedTheme = name === "auto" && supportsAutoTheme
+          ? systemTheme.matches ? "dark" : "light"
+          : name;
+
+        document.documentElement.dataset.theme = resolvedTheme;
         if (themeSelect instanceof HTMLSelectElement) {
           themeSelect.value = name;
         }
@@ -986,6 +1000,12 @@ const themeStyles = getWebsiteThemeStyles(theme);
           closeSettingsDropdown(true);
         });
       }
+
+      systemTheme?.addEventListener("change", () => {
+        if (themeSelect instanceof HTMLSelectElement && themeSelect.value === "auto") {
+          applyTheme("auto");
+        }
+      });
 
       document.addEventListener("click", (event) => {
         if (!(settingsDropdown instanceof HTMLElement) ||
