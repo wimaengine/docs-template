@@ -24,5 +24,6 @@ export declare function addIntroLink(entry: LinkRouteEntry): void;
 export declare function addGuideLink(entry: LinkRouteEntry): void;
 export declare function addExampleLink(entry: LinkRouteEntry): void;
 export declare function addApiLink(entry: LinkRouteEntry): void;
+export declare function addApiPackageLink(entry: LinkRouteEntry): void;
 
 export declare function resolveSiteLink(value: string): string;

@@ -3,6 +3,7 @@ import { getCollection } from "astro:content";
 import {
   assertUniqueApiEntryRoutes,
   getApiEntryRoute,
+  getApiPackageRoute,
   getApiRoutePath,
   getExamplesRoutePath,
   getGuideEntryRoute,
@@ -16,6 +17,7 @@ import GuideEntry from "../screens/GuideEntry.astro";
 import ExamplesIndex from "../screens/ExamplesIndex.astro";
 import ExampleEntry from "../screens/ExampleEntry.astro";
 import ApiIndex from "../screens/ApiIndex.astro";
+import ApiPackageEntry from "../screens/ApiPackageEntry.astro";
 import ApiClassEntry from "../screens/ApiClassEntry.astro";
 import ApiEnumEntry from "../screens/ApiEnumEntry.astro";
 import ApiEntry from "../screens/ApiEntry.astro";
@@ -52,19 +54,28 @@ interface ApiCollectionEntry {
   data: TypeDocReflection;
 }
 
+interface ApiPackageCollectionEntry {
+  id: string;
+  body: string;
+  data: {
+    title: string;
+  };
+}
+
 type PageKind =
   | "guide-index"
   | "guide-entry"
   | "examples-index"
   | "example-entry"
   | "api-index"
+  | "api-package-entry"
   | "api-class-entry"
   | "api-enum-entry"
   | "api-entry";
 
 interface StaticProps {
   kind: PageKind;
-  entry?: GuideCollectionEntry | ExampleCollectionEntry | ApiCollectionEntry;
+  entry?: GuideCollectionEntry | ExampleCollectionEntry | ApiCollectionEntry | ApiPackageCollectionEntry;
 }
 
 function splitCamelCase(value: string): string {
@@ -72,11 +83,17 @@ function splitCamelCase(value: string): string {
 }
 
 export async function getStaticPaths() {
-  const [guideEntriesForPaths, exampleEntriesForPaths, apiEntriesForPaths] = await Promise.all([
+  const [guideEntriesForPaths, exampleEntriesForPaths, apiEntriesForPaths, apiPackageEntriesForPaths] = await Promise.all([
     getCollection("guide"),
     getCollection("examples"),
-    getCollection("api")
-  ]) as [GuideCollectionEntry[], ExampleCollectionEntry[], ApiCollectionEntry[]];
+    getCollection("api"),
+    getCollection("apiPackages")
+  ]) as [
+    GuideCollectionEntry[],
+    ExampleCollectionEntry[],
+    ApiCollectionEntry[],
+    ApiPackageCollectionEntry[]
+  ];
   const guideRootForPaths = getGuideRoutePath();
   const examplesRootForPaths = getExamplesRoutePath();
   const apiRootForPaths = getApiRoutePath();
@@ -108,6 +125,10 @@ export async function getStaticPaths() {
       params: { page: routeToParam(apiRootForPaths) },
       props: { kind: "api-index" }
     },
+    ...apiPackageEntriesForPaths.map((entry) => ({
+      params: { page: routeToParam(getApiPackageRoute(entry)) },
+      props: { kind: "api-package-entry", entry }
+    })),
     ...apiEntriesForPaths.map((entry) => ({
       params: { page: routeToParam(getApiEntryRoute(entry)) },
       props: {
@@ -127,6 +148,7 @@ const { kind } = props;
 const guideEntry = kind === "guide-index" || kind === "guide-entry" ? (props.entry as GuideCollectionEntry) : null;
 const exampleEntry = kind === "example-entry" ? (props.entry as ExampleCollectionEntry) : null;
 const apiEntry = kind === "api-entry" ? (props.entry as ApiCollectionEntry) : null;
+const apiPackageEntry = kind === "api-package-entry" ? (props.entry as ApiPackageCollectionEntry) : null;
 const apiClassEntry = kind === "api-class-entry" ? (props.entry as ApiCollectionEntry) : null;
 const apiEnumEntry = kind === "api-enum-entry" ? (props.entry as ApiCollectionEntry) : null;
 
@@ -159,6 +181,7 @@ const categories = Object.entries(
 {kind === "examples-index" ? <ExamplesIndex categories={categories} /> : null}
 {exampleEntry && kind === "example-entry" ? <ExampleEntry entry={exampleEntry} sampleUrl={withBase(getExamplesRoutePath(exampleEntry.id, "example.html"))} /> : null}
 {kind === "api-index" ? <ApiIndex /> : null}
+{apiPackageEntry && kind === "api-package-entry" ? <ApiPackageEntry entry={apiPackageEntry} /> : null}
 {apiClassEntry && kind === "api-class-entry" ? <ApiClassEntry entry={apiClassEntry} /> : null}
 {apiEnumEntry && kind === "api-enum-entry" ? <ApiEnumEntry entry={apiEnumEntry} /> : null}
 {apiEntry && kind === "api-entry" ? <ApiEntry entry={apiEntry} /> : null}

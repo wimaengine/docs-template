@@ -301,6 +301,24 @@ function getApiRoutePath(...segments) {
   return joinRoutePath(getWebsiteConfig().apiRoute, ...segments);
 }
 
+function getApiPackageId(entry) {
+  const raw = String(entry?.id ?? "")
+    .replace(/\.(?:md|mdx)$/i, "")
+    .replace(/\/README$/i, "");
+
+  return raw.split("/").filter(Boolean).join("/");
+}
+
+function getApiPackageRoute(entry) {
+  const packageId = getApiPackageId(entry);
+
+  if (!packageId) {
+    throw new Error(`API package entry "${entry?.id ?? ""}" did not produce a package route.`);
+  }
+
+  return getApiRoutePath(packageId);
+}
+
 function getApiEntryRouteContext(entry) {
   return {
     path: entry.id,
@@ -369,6 +387,8 @@ function getIntroContentPath() {
 export {
   defaultWebsiteConfig,
   assertUniqueApiEntryRoutes,
+  getApiPackageId,
+  getApiPackageRoute,
   getApiRoutePath,
   getApiEntryRoute,
   getApiEntryRouteContext,

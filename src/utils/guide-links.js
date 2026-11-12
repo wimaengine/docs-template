@@ -59,7 +59,7 @@ function getGuideEntryId(relativePath) {
   return id.endsWith("/index") ? id.slice(0, -"/index".length) : id;
 }
 
-function getProjectRelativeAlias(filePath) {
+function getProjectRelativePath(filePath) {
   const relativePath = path.relative(projectRootDir, filePath);
 
   if (
@@ -70,11 +70,7 @@ function getProjectRelativeAlias(filePath) {
     return undefined;
   }
 
-  return relativePath
-    .split(path.sep)
-    .join("/")
-    .replace(/\.[^/.]+$/, "")
-    .replace(/\/index$/, "");
+  return relativePath.split(path.sep).join("/");
 }
 
 function getIntroTargetRoute(targetFilePath) {
@@ -87,8 +83,26 @@ function getIntroTargetRoute(targetFilePath) {
     return getLink(guideAlias) ?? getLink(`${guideAlias}/index`);
   }
 
-  const alias = getProjectRelativeAlias(targetFilePath);
-  return alias ? getLink(alias) ?? getLink(`${alias}/index`) : undefined;
+  const targetPath = getProjectRelativePath(targetFilePath);
+  return targetPath ? getLink(targetPath) : undefined;
+}
+
+function resolveProjectLink(value, sourcePath) {
+  if (!sourcePath || value === "" || value.startsWith("#")) {
+    return resolveSiteLink(value);
+  }
+
+  const { hash, pathname, query } = splitLink(value);
+  if (!pathname || pathname.startsWith("/")) {
+    return resolveSiteLink(value);
+  }
+
+  const sourceFilePath = resolveSourcePath(sourcePath);
+  const targetFilePath = path.resolve(path.dirname(sourceFilePath), decodeURIComponent(pathname));
+  const targetPath = getProjectRelativePath(targetFilePath);
+  const route = targetPath ? getLink(targetPath) : undefined;
+
+  return route ? appendLinkSuffix(route, query, hash) : resolveSiteLink(value);
 }
 
 function resolveIntroLink(value, sourcePath) {
@@ -105,13 +119,13 @@ function resolveIntroLink(value, sourcePath) {
   const introFilePath = path.resolve(getIntroContentPath());
 
   if (sourceFilePath !== introFilePath) {
-    return resolveSiteLink(value);
+    return resolveProjectLink(value, sourcePath);
   }
 
   const targetFilePath = path.resolve(path.dirname(sourceFilePath), decodeURIComponent(pathname));
   const route = getIntroTargetRoute(targetFilePath);
 
-  return route ? appendLinkSuffix(route, query, hash) : resolveSiteLink(value);
+  return route ? appendLinkSuffix(route, query, hash) : resolveProjectLink(value, sourcePath);
 }
 
 export function resolveGuideLink(value, sourcePath) {

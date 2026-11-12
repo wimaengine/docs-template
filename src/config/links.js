@@ -1,4 +1,5 @@
 import {
+  getApiPackageRoute,
   getApiEntryRoute,
   getExamplesRoutePath,
   getGuideEntryRoute,
@@ -23,6 +24,16 @@ export function addExampleLink(entry) {
 
 export function addApiLink(entry) {
   addLink(entry.data.name, getApiEntryRoute(entry));
+}
+
+export function addApiPackageLink(entry) {
+  const route = getApiPackageRoute(entry);
+
+  if (!entry.filePath) {
+    return;
+  }
+
+  addLink(entry.filePath, route);
 }
 
 function splitLink(value) {

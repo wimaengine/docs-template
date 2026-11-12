@@ -4,7 +4,7 @@ import { Application, ReflectionKind } from "typedoc";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { projectRootDir } from "./config/project.js";
-import { addApiLink, addExampleLink, addGuideLink, addIntroLink } from "./config/links.js";
+import { addApiLink, addApiPackageLink, addExampleLink, addGuideLink, addIntroLink } from "./config/links.js";
 import { getApiSourceDir, getExamplesContentDir, getGuideContentDir, getIntroContentPath } from "./config/site.js";
 
 const apiSourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
@@ -549,6 +549,17 @@ const guide = defineCollection({
   })
 });
 
+const apiPackages = defineCollection({
+  loader: createDeferredGlobLoader({
+    getBase: getApiSourceDir,
+    getPattern: () => "*/README.md",
+    onEntry: addApiPackageLink
+  }),
+  schema: z.object({
+    title: z.string()
+  })
+});
+
 const intro = defineCollection({
   loader: createDeferredGlobLoader({
     getBase: () => path.dirname(getIntroContentPath()),
@@ -564,5 +575,6 @@ export const collections = {
   intro,
   examples,
   guide,
-  api
+  api,
+  apiPackages
 };

@@ -55,6 +55,14 @@ export interface ApiRouteEntry {
   data: ApiRouteReflection;
 }
 
+export interface ApiPackageRouteEntry {
+  id: string;
+  data?: {
+    title?: string;
+    [key: string]: unknown;
+  };
+}
+
 export interface ApiEntryRouteContext {
   path: string;
   reflection: ApiRouteReflection;
@@ -83,6 +91,8 @@ export declare const defaultWebsiteConfig: Readonly<WebsiteConfig>;
 export declare function setWebsiteConfig(options?: WebsiteConfigOptions): Readonly<WebsiteConfig>;
 export declare function getWebsiteConfig(): Readonly<WebsiteConfig>;
 export declare function getWebsiteThemeStyles(theme: WebsiteTheme): string;
+export declare function getApiPackageId(entry: ApiPackageRouteEntry): string;
+export declare function getApiPackageRoute(entry: ApiPackageRouteEntry): string;
 export declare function getGuideEntryRoute(entry: { id: string; slug?: string }): string;
 export declare function getGuideRoutePath(...segments: string[]): string;
 export declare function getExamplesRoutePath(...segments: string[]): string;

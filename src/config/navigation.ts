@@ -1,6 +1,6 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
+import { getApiEntryRoute, getApiPackageRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
 import { getReflectionKindLabel } from "../utils/typedoc.js";
 
 export interface NavTab {
@@ -58,6 +58,13 @@ interface ApiCollectionEntry {
   };
 }
 
+interface ApiPackageCollectionEntry {
+  id: string;
+  data: {
+    title: string;
+  };
+}
+
 interface ApiNavigationEntry {
   label: string;
   href: string;
@@ -70,6 +77,8 @@ interface ApiNavigationEntry {
 interface ApiNavigationNode {
   segment: string;
   entry: ApiNavigationEntry | null;
+  overview: { label: string; href: string } | null;
+  label: string | null;
   children: Map<string, ApiNavigationNode>;
 }
 
@@ -205,37 +214,70 @@ function formatGuideNavigationGroupLabel(value: string): string {
   return formatted || value;
 }
 
-function createApiNavigation(apiEntries: ApiCollectionEntry[], apiRootPath: string): NavTab[] {
+function getOrCreateApiNavigationNode(
+  root: ApiNavigationNode,
+  route: string,
+  apiRootPath: string
+): ApiNavigationNode {
+  const segments = getApiRouteSegments(route, apiRootPath);
+
+  if (segments.length === 0) {
+    throw new Error(`API route "${route}" did not produce a nested route.`);
+  }
+
+  let node = root;
+
+  for (const segment of segments) {
+    let child = node.children.get(segment);
+
+    if (!child) {
+      child = {
+        segment,
+        entry: null,
+        overview: null,
+        label: null,
+        children: new Map()
+      };
+      node.children.set(segment, child);
+    }
+
+    node = child;
+  }
+
+  return node;
+}
+
+function createApiNavigation(
+  apiEntries: ApiCollectionEntry[],
+  apiPackageEntries: ApiPackageCollectionEntry[],
+  apiRootPath: string
+): NavTab[] {
   const root: ApiNavigationNode = {
     segment: "",
     entry: null,
+    overview: null,
+    label: null,
     children: new Map()
   };
 
+  for (const entry of apiPackageEntries) {
+    const route = getApiPackageRoute(entry);
+    const node = getOrCreateApiNavigationNode(root, route, apiRootPath);
+
+    if (node.overview) {
+      throw new Error(`API package route collision: "${route}" is used by multiple package entries.`);
+    }
+
+    node.label = entry.data.title;
+    node.overview = {
+      label: "Overview",
+      href: withBase(route)
+    };
+  }
+
   for (const entry of apiEntries) {
     const route = getApiEntryRoute(entry);
-    const segments = getApiRouteSegments(route, apiRootPath);
-
-    if (segments.length === 0) {
-      throw new Error(`API entry "${entry.id}" did not produce a nested route.`);
-    }
-
-    let node = root;
-
-    for (const segment of segments) {
-      let child = node.children.get(segment);
-
-      if (!child) {
-        child = {
-          segment,
-          entry: null,
-          children: new Map()
-        };
-        node.children.set(segment, child);
-      }
-
-      node = child;
-    }
+    const node = getOrCreateApiNavigationNode(root, route, apiRootPath);
 
     if (node.entry) {
       throw new Error(`API route collision: "${route}" is used by multiple entries.`);
@@ -254,10 +296,14 @@ function createApiNavigation(apiEntries: ApiCollectionEntry[], apiRootPath: stri
       .map((child) => {
         const children = renderNode(child);
         const item: NavTab = child.entry ?? {
-          label: formatApiNavigationGroupLabel(child.segment)
+          label: child.label ?? formatApiNavigationGroupLabel(child.segment)
         };
+        const navigationChildren = [
+          ...(child.overview ? [child.overview] : []),
+          ...children
+        ];
 
-        return children.length > 0 ? { ...item, children } : item;
+        return navigationChildren.length > 0 ? { ...item, children: navigationChildren } : item;
       });
   }
 
@@ -361,12 +407,19 @@ function createGuideNavigation(
 const guideRootPath = getGuideRoutePath();
 const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
-const [introEntries, guideEntries, examplesEntries, apiEntries] = await Promise.all([
+const [introEntries, guideEntries, examplesEntries, apiEntries, apiPackageEntries] = await Promise.all([
   getCollection("intro"),
   getCollection("guide"),
   getCollection("examples"),
-  getCollection("api")
-]) as [IntroCollectionEntry[], GuideCollectionEntry[], ExampleCollectionEntry[], ApiCollectionEntry[]];
+  getCollection("api"),
+  getCollection("apiPackages")
+]) as [
+  IntroCollectionEntry[],
+  GuideCollectionEntry[],
+  ExampleCollectionEntry[],
+  ApiCollectionEntry[],
+  ApiPackageCollectionEntry[]
+];
 const introEntry = introEntries[0];
 
 if (!introEntry) {
@@ -410,7 +463,7 @@ const sidebarTabs: NavTab[] = [
         label: "Introduction",
         href: withBase(apiRootPath)
       },
-      ...createApiNavigation(apiEntries, apiRootPath)
+      ...createApiNavigation(apiEntries, apiPackageEntries, apiRootPath)
     ]
   },
   {

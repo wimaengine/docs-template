@@ -1,6 +1,6 @@
 import { getCollection } from "astro:content";
 import { withBase } from "../utils/url.js";
-import { getApiEntryRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
+import { getApiEntryRoute, getApiPackageRoute, getApiRoutePath, getExamplesRoutePath, getGuideEntryRoute, getGuideRoutePath } from "./site.js";
 import { getReflectionKindLabel } from "../utils/typedoc.js";
 
 function cleanLabel(value) {
@@ -123,36 +123,61 @@ function formatGuideNavigationGroupLabel(value) {
   return formatted || value;
 }
 
-function createApiNavigation(apiEntries, apiRootPath) {
+function getOrCreateApiNavigationNode(root, route, apiRootPath) {
+  const segments = getApiRouteSegments(route, apiRootPath);
+
+  if (segments.length === 0) {
+    throw new Error(`API route "${route}" did not produce a nested route.`);
+  }
+
+  let node = root;
+
+  for (const segment of segments) {
+    let child = node.children.get(segment);
+
+    if (!child) {
+      child = {
+        segment,
+        entry: null,
+        overview: null,
+        label: null,
+        children: new Map()
+      };
+      node.children.set(segment, child);
+    }
+
+    node = child;
+  }
+
+  return node;
+}
+
+function createApiNavigation(apiEntries, apiPackageEntries, apiRootPath) {
   const root = {
     entry: null,
+    overview: null,
+    label: null,
     children: new Map()
   };
 
+  for (const entry of apiPackageEntries) {
+    const route = getApiPackageRoute(entry);
+    const node = getOrCreateApiNavigationNode(root, route, apiRootPath);
+
+    if (node.overview) {
+      throw new Error(`API package route collision: "${route}" is used by multiple package entries.`);
+    }
+
+    node.label = entry.data.title;
+    node.overview = {
+      label: "Overview",
+      href: withBase(route)
+    };
+  }
+
   for (const entry of apiEntries) {
     const route = getApiEntryRoute(entry);
-    const segments = getApiRouteSegments(route, apiRootPath);
-
-    if (segments.length === 0) {
-      throw new Error(`API entry "${entry.id}" did not produce a nested route.`);
-    }
-
-    let node = root;
-
-    for (const segment of segments) {
-      let child = node.children.get(segment);
-
-      if (!child) {
-        child = {
-          segment,
-          entry: null,
-          children: new Map()
-        };
-        node.children.set(segment, child);
-      }
-
-      node = child;
-    }
+    const node = getOrCreateApiNavigationNode(root, route, apiRootPath);
 
     if (node.entry) {
       throw new Error(`API route collision: "${route}" is used by multiple entries.`);
@@ -171,10 +196,14 @@ function createApiNavigation(apiEntries, apiRootPath) {
       .map((child) => {
         const children = renderNode(child);
         const item = child.entry ?? {
-          label: formatApiNavigationGroupLabel(child.segment)
+          label: child.label ?? formatApiNavigationGroupLabel(child.segment)
         };
+        const navigationChildren = [
+          ...(child.overview ? [child.overview] : []),
+          ...children
+        ];
 
-        return children.length > 0 ? { ...item, children } : item;
+        return navigationChildren.length > 0 ? { ...item, children: navigationChildren } : item;
       });
   }
 
@@ -273,11 +302,12 @@ function createGuideNavigation(guideEntries, guideRootPath, readingOrderIndex) {
 const guideRootPath = getGuideRoutePath();
 const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
-const [introEntries, guideEntries, examplesEntries, apiEntries] = await Promise.all([
+const [introEntries, guideEntries, examplesEntries, apiEntries, apiPackageEntries] = await Promise.all([
   getCollection("intro"),
   getCollection("guide"),
   getCollection("examples"),
-  getCollection("api")
+  getCollection("api"),
+  getCollection("apiPackages")
 ]);
 const introEntry = introEntries[0];
 
@@ -322,7 +352,7 @@ const sidebarTabs = [
         label: "Introduction",
         href: withBase(apiRootPath)
       },
-      ...createApiNavigation(apiEntries, apiRootPath)
+      ...createApiNavigation(apiEntries, apiPackageEntries, apiRootPath)
     ]
   },
   {

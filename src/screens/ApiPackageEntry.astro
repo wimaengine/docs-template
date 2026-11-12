@@ -1,0 +1,70 @@
+---
+import { render } from "astro:content";
+import { rootPackageName } from "@configs/project.js";
+import { sidebarTabs } from "@configs";
+import DocLayout from "@layouts/DocLayout.astro";
+import ApiSurface from "../components/ApiSurface.astro";
+
+interface ApiPackageCollectionEntry {
+  id: string;
+  body: string;
+  data: {
+    title: string;
+  };
+}
+
+interface Props {
+  entry: ApiPackageCollectionEntry;
+}
+
+const { entry } = Astro.props as Props;
+const { Content, headings } = await render(entry);
+---
+
+<DocLayout
+  title={`${entry.data.title} API | ${rootPackageName}`}
+  tabs={sidebarTabs}
+  headings={headings}
+>
+  <ApiSurface>
+    <div class="api-package-page">
+      <header class="api-package-header">
+        <p class="section-label">API package</p>
+        <h1>{entry.data.title}</h1>
+      </header>
+      <article class="api-package-content">
+        <Content />
+      </article>
+    </div>
+  </ApiSurface>
+</DocLayout>
+
+<style>
+  .api-package-page {
+    width: min(100%, 70rem);
+    margin-inline: auto;
+  }
+
+  .api-package-header {
+    display: grid;
+    gap: 0.65rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .api-package-header h1 {
+    margin: 0;
+  }
+
+  .section-label {
+    margin: 0;
+    color: var(--accent-secondary);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .api-package-content {
+    min-width: 0;
+  }
+</style>
