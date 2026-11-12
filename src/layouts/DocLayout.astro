@@ -1,5 +1,5 @@
 ---
-import { Check, Copy, Settings } from "@lucide/astro";
+import { Check, Copy, Link as LinkIcon, Settings } from "@lucide/astro";
 import SidebarNav from "@components/SidebarNav.astro";
 import PageOutline from "@components/PageOutline.astro";
 import { rootPackageName } from "@configs/project.js";
@@ -698,6 +698,61 @@ const themeStyles = getWebsiteThemeStyles(theme);
         border: 0;
       }
 
+      .copy-link-heading {
+        scroll-margin-top: calc(var(--site-header-height) + 1rem);
+      }
+
+      .heading-copy-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.1rem;
+        height: 1.1rem;
+        padding: 0;
+        margin-inline-start: 0.45em;
+        color: var(--muted);
+        line-height: 0;
+        text-align: center;
+        vertical-align: 0.08em;
+        text-decoration: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: color 140ms ease-out, opacity 140ms ease-out, visibility 140ms ease-out;
+      }
+
+      .copy-link-heading:hover .heading-copy-link,
+      .copy-link-heading:focus-within .heading-copy-link {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .heading-copy-link:hover,
+      .heading-copy-link:focus-visible,
+      .heading-copy-link[data-state="copied"] {
+        color: var(--accent);
+      }
+
+      .heading-copy-link[data-state="failed"] {
+        color: #fca5a5;
+      }
+
+      .heading-copy-link:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      .heading-copy-link svg {
+        width: 0.9rem;
+        height: 0.9rem;
+      }
+
+      @media (hover: none) {
+        .heading-copy-link {
+          opacity: 1;
+          visibility: visible;
+        }
+      }
+
       a {
         color: var(--accent);
       }
@@ -835,6 +890,12 @@ const themeStyles = getWebsiteThemeStyles(theme);
       <Copy size={16} aria-hidden="true" />
     </template>
     <template id="code-check-icon">
+      <Check size={16} aria-hidden="true" />
+    </template>
+    <template id="heading-copy-link-icon">
+      <LinkIcon size={16} aria-hidden="true" />
+    </template>
+    <template id="heading-copy-link-check-icon">
       <Check size={16} aria-hidden="true" />
     </template>
     <script>
@@ -1029,6 +1090,8 @@ const themeStyles = getWebsiteThemeStyles(theme);
 
       const copyIconTemplate = document.getElementById("code-copy-icon");
       const checkIconTemplate = document.getElementById("code-check-icon");
+      const headingCopyLinkIconTemplate = document.getElementById("heading-copy-link-icon");
+      const headingCopyLinkCheckIconTemplate = document.getElementById("heading-copy-link-check-icon");
 
       const setButtonIcon = (button, template) => {
         if (!(template instanceof HTMLTemplateElement)) {
@@ -1120,8 +1183,105 @@ const themeStyles = getWebsiteThemeStyles(theme);
         });
       };
 
+      const slugifyHeading = (value) => {
+        const slug = value
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+        return slug || "section";
+      };
+
+      const getUniqueHeadingId = (heading, text) => {
+        const baseId = slugifyHeading(text);
+        let id = baseId;
+        let suffix = 2;
+
+        while (document.getElementById(id) && document.getElementById(id) !== heading) {
+          id = `${baseId}-${suffix}`;
+          suffix += 1;
+        }
+
+        return id;
+      };
+
+      const getHeadingAnchorId = (heading, text) => {
+        if (heading.id) {
+          return heading.id;
+        }
+
+        const section = heading.matches("h2, h3")
+          ? heading.closest("article.member-section, details.api-group")
+          : null;
+        if (section instanceof HTMLElement && section.id) {
+          return section.id;
+        }
+
+        const id = getUniqueHeadingId(heading, text);
+        heading.id = id;
+        return id;
+      };
+
+      const enhanceHeadingLinks = () => {
+        document.querySelectorAll("main h1, main h2, main h3, main h4, main h5, main h6").forEach((heading) => {
+          if (!(heading instanceof HTMLElement) || heading.dataset.copyLinkReady === "true") {
+            return;
+          }
+
+          const text = heading.textContent?.replace(/\s+/g, " ").trim() || "section";
+          const anchorId = getHeadingAnchorId(heading, text);
+          const link = document.createElement("a");
+          link.className = "heading-copy-link";
+          link.href = `#${anchorId}`;
+          link.setAttribute("aria-label", `Copy link to ${text}`);
+          link.title = "Copy link";
+          setButtonIcon(link, headingCopyLinkIconTemplate);
+
+          const status = document.createElement("span");
+          status.className = "code-copy-status";
+          status.setAttribute("role", "status");
+          status.setAttribute("aria-live", "polite");
+
+          heading.dataset.copyLinkReady = "true";
+          heading.classList.add("copy-link-heading");
+          heading.append(link, status);
+
+          let resetTimer = 0;
+          link.addEventListener("click", async (event) => {
+            event.stopPropagation();
+
+            const value = new URL(link.href, window.location.href).toString();
+            window.clearTimeout(resetTimer);
+
+            try {
+              await copyText(value);
+              link.dataset.state = "copied";
+              setButtonIcon(link, headingCopyLinkCheckIconTemplate);
+              link.setAttribute("aria-label", "Link copied");
+              status.textContent = "Link copied to clipboard.";
+            } catch {
+              link.dataset.state = "failed";
+              link.setAttribute("aria-label", "Copy link failed");
+              status.textContent = "Copy failed.";
+            }
+
+            resetTimer = window.setTimeout(() => {
+              link.dataset.state = "";
+              setButtonIcon(link, headingCopyLinkIconTemplate);
+              link.setAttribute("aria-label", `Copy link to ${text}`);
+              status.textContent = "";
+            }, 1800);
+          });
+        });
+      };
+
       enhanceCodeBlocks();
+      enhanceHeadingLinks();
       document.addEventListener("astro:page-load", enhanceCodeBlocks);
+      document.addEventListener("astro:page-load", enhanceHeadingLinks);
 
       const persistScrollPosition = (element, storageKey) => {
         let saveFrame = 0;
