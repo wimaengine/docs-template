@@ -306,11 +306,6 @@ function resolveReflectionSourcePath(
 
   const sourceName = source.fileName.split(path.sep).join("/");
   const normalizedAbsoluteName = path.isAbsolute(sourceName) ? path.normalize(sourceName) : null;
-  const pathMatches = (left: string, right: string): boolean => (
-    left === right ||
-    left.endsWith(`/${right}`) ||
-    right.endsWith(`/${left}`)
-  );
 
   for (const filePath of sourceFiles) {
     const relativeToApi = path.relative(apiRoot, filePath).split(path.sep).join("/");
@@ -318,8 +313,8 @@ function resolveReflectionSourcePath(
 
     if (
       (normalizedAbsoluteName && path.normalize(filePath) === normalizedAbsoluteName) ||
-      pathMatches(relativeToApi, sourceName) ||
-      pathMatches(relativeToProject, sourceName)
+      relativeToApi === sourceName ||
+      relativeToProject === sourceName
     ) {
       return filePath;
     }
@@ -375,16 +370,20 @@ function getJsDocComment(source: string, line: number | undefined): string {
   const lines = source.split(/\r?\n/);
   let end = line - 2;
 
-  while (end >= 0 && lines[end].trim() === "") {
+  if (end >= lines.length) {
+    return "";
+  }
+
+  while (end >= 0 && lines[end]?.trim() === "") {
     end -= 1;
   }
 
-  if (end < 0 || !lines[end].trim().endsWith("*/")) {
+  if (end < 0 || !lines[end]?.trim().endsWith("*/")) {
     return "";
   }
 
   let start = end;
-  while (start >= 0 && !lines[start].includes("/**")) {
+  while (start >= 0 && !lines[start]?.includes("/**")) {
     start -= 1;
   }
 
