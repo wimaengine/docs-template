@@ -133,6 +133,59 @@ function escapeMarkdownCode(value) {
   return (value ?? "").replaceAll("`", "\\`");
 }
 
+function parseJSDocLink(value) {
+  const match = value.match(/^\{@link\s+([^{}]+)\}$/);
+  if (!match) {
+    return undefined;
+  }
+
+  const body = match[1].trim();
+  const pipeIndex = body.indexOf("|");
+  let target;
+  let labelPart;
+
+  if (pipeIndex >= 0) {
+    target = body.slice(0, pipeIndex).trim();
+    labelPart = body.slice(pipeIndex + 1).trim();
+  } else {
+    const words = body.split(/\s+/);
+    target = words.shift();
+    labelPart = words.join(" ");
+  }
+
+  if (!target) {
+    return undefined;
+  }
+
+  const importTarget = target.match(/^import\([^)]*\)\.(.+)$/);
+  const label = labelPart?.trim() || importTarget?.[1] || target;
+
+  return {
+    target,
+    text: label
+  };
+}
+
+function renderJSDocLink(value, codeStyle = false) {
+  const part = parseJSDocLink(value);
+  if (!part) {
+    return undefined;
+  }
+
+  const href = resolveMarkdownLink(part);
+  const display = codeStyle
+    ? `\`${escapeMarkdownCode(part.text)}\``
+    : escapeMarkdownLinkLabel(part.text);
+
+  return href ? `[${display}](<${href}>)` : display;
+}
+
+function convertJSDocLinks(value) {
+  return (value ?? "").replace(/(`?)(\{@link\s+[^{}]+\})(`?)/g, (match, openingTick, link, closingTick) => (
+    renderJSDocLink(link, openingTick && closingTick) ?? match
+  ));
+}
+
 function getTargetName(target) {
   return target?.name ?? target?.qualifiedName ?? "";
 }
@@ -179,7 +232,7 @@ function resolveMarkdownLink(part) {
 
 function displayPartsToMarkdown(parts) {
   if (typeof parts === "string") {
-    return normalizeMarkdown(parts);
+    return normalizeMarkdown(convertJSDocLinks(parts));
   }
 
   const markdown = (parts ?? [])
@@ -204,7 +257,7 @@ function displayPartsToMarkdown(parts) {
     })
     .join("");
 
-  return normalizeMarkdown(markdown);
+  return normalizeMarkdown(convertJSDocLinks(markdown));
 }
 
 function getReflectionComment(reflection, signature) {
