@@ -175,7 +175,12 @@ async function collectSourceFiles(dir, root) {
     const relativePath = path.relative(root, fullPath).split(path.sep).join("/");
 
     if (dirEntry.isDirectory()) {
-      if (dirEntry.name === "node_modules" || dirEntry.name === "dist" || dirEntry.name === "build") {
+      if (
+        dirEntry.name === "node_modules" ||
+        dirEntry.name === "dist" ||
+        dirEntry.name === "build" ||
+        dirEntry.name === "types"
+      ) {
         continue;
       }
 
