@@ -11,6 +11,9 @@ export interface IntroCollectionEntry {
   body: string;
   data: {
     title?: string;
+    description?: string;
+    ogImage?: string;
+    noindex?: boolean;
   };
 }
 
@@ -25,6 +28,9 @@ export interface ApiPackageCollectionEntry {
   body: string;
   data: {
     title: string;
+    description?: string;
+    ogImage?: string;
+    noindex?: boolean;
   };
 }
 
@@ -34,6 +40,9 @@ export interface GuideCollectionEntry {
   body: string;
   data: {
     title: string;
+    description?: string;
+    ogImage?: string;
+    noindex?: boolean;
   };
 }
 

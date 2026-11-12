@@ -6,6 +6,7 @@ import type { Browser, Exports } from "resolve.exports";
 export interface RootPackageJson {
   name: string;
   version?: string;
+  homepage?: string;
   source?: string;
   main?: string;
   module?: string;

@@ -5,6 +5,10 @@ import DocLayout from "@layouts/DocLayout.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 ---
 
-<DocLayout title={`API | ${rootPackageName}`} tabs={sidebarTabs}>
+<DocLayout
+  title={`API | ${rootPackageName}`}
+  description={`API reference for ${rootPackageName}.`}
+  tabs={sidebarTabs}
+>
   <ApiSurface blank />
 </DocLayout>

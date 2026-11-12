@@ -43,7 +43,9 @@ function getMemberSourceUrl(member: JSONOutput.DeclarationReflection): string | 
 
 <DocLayout
   title={`Enum ${reflection.name} | ${rootPackageName}`}
+  description={description}
   tabs={sidebarTabs}
+  type="article"
   rightPanel={members.length > 0 ? "api" : undefined}
 >
   <ApiSurface>

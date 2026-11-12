@@ -2,17 +2,19 @@
 import { withBase } from "../utils/url.ts";
 import { buildImportMap } from "../utils/import-map.ts";
 import { getWebsiteConfig, getWebsiteThemeStyles } from "../config/site.ts";
+import Seo from "../components/Seo.astro";
 
 interface Props {
   source: string;
   title?: string;
+  description?: string;
 }
 
-const { source, title = "Example" } = Astro.props;
+const { source, title = "Example", description } = Astro.props;
 const isProd = import.meta.env.PROD;
 
 const importMap = buildImportMap(isProd);
-const { theme } = getWebsiteConfig();
+const { theme, seo } = getWebsiteConfig();
 const themeStyles = getWebsiteThemeStyles(theme);
 
 const rewriteAssetLiterals = (script: string): string =>
@@ -26,11 +28,11 @@ const runnerScript = isProd ? rewriteAssetLiterals(source) : source;
 ---
 
 <!doctype html>
-<html lang="en" data-theme={theme.default}>
+<html lang={seo.locale} data-theme={theme.default}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title}</title>
+    <Seo title={title} description={description} noindex />
     <style is:global set:html={themeStyles}></style>
     <style is:global>
       html,

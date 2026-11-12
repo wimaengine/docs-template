@@ -629,7 +629,10 @@ const guide = defineCollection({
     onEntries: addGuideLinks
   }),
   schema: z.object({
-    title: z.string()
+    title: z.string(),
+    description: z.string().optional(),
+    ogImage: z.string().optional(),
+    noindex: z.boolean().optional()
   })
 });
 
@@ -640,7 +643,10 @@ const apiPackages = defineCollection({
     onEntries: addApiPackageLinks
   }),
   schema: z.object({
-    title: z.string()
+    title: z.string(),
+    description: z.string().optional(),
+    ogImage: z.string().optional(),
+    noindex: z.boolean().optional()
   })
 });
 
@@ -651,7 +657,10 @@ const intro = defineCollection({
     onEntries: addIntroLinks
   }),
   schema: z.object({
-    title: z.string().optional()
+    title: z.string().optional(),
+    description: z.string().optional(),
+    ogImage: z.string().optional(),
+    noindex: z.boolean().optional()
   })
 });
 

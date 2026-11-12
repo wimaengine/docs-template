@@ -14,7 +14,15 @@ const { entry } = Astro.props as Props;
 const { Content, headings } = await render(entry);
 ---
 
-<DocLayout title={`${entry.data.title} | ${rootPackageName}`} tabs={sidebarTabs} headings={headings}>
+<DocLayout
+  title={`${entry.data.title} | ${rootPackageName}`}
+  description={entry.data.description}
+  image={entry.data.ogImage}
+  noindex={entry.data.noindex}
+  tabs={sidebarTabs}
+  headings={headings}
+  type="article"
+>
   <Content />
   <GuidePagination />
 </DocLayout>

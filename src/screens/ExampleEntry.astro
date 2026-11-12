@@ -19,7 +19,12 @@ const title = entry.data.title;
 const sourceUrl = getSourceUrl(entry.filePath, 1);
 ---
 
-<DocLayout title={`${title} | ${rootPackageName}`} tabs={sidebarTabs}>
+<DocLayout
+  title={`${title} | ${rootPackageName}`}
+  description={`Interactive ${title} example for ${rootPackageName}.`}
+  tabs={sidebarTabs}
+  type="article"
+>
   <div class="example-frame">
     <a href={withBase(getExamplesRoutePath())}>← Back to examples</a>
     <h1 style="text-align:center">{title}</h1>

@@ -15,6 +15,13 @@ if (!introEntry) {
 const { Content, headings } = await render(introEntry);
 ---
 
-<DocLayout title={rootPackageName} tabs={sidebarTabs} headings={headings}>
+<DocLayout
+  title={rootPackageName}
+  description={introEntry.data.description}
+  image={introEntry.data.ogImage}
+  noindex={introEntry.data.noindex}
+  tabs={sidebarTabs}
+  headings={headings}
+>
   <Content />
 </DocLayout>

@@ -2,6 +2,7 @@
 import { Check, Copy, Link as LinkIcon, Settings } from "@lucide/astro";
 import SidebarNav from "@components/SidebarNav.astro";
 import PageOutline from "@components/PageOutline.astro";
+import Seo from "@components/Seo.astro";
 import { rootPackageName } from "@configs/project.ts";
 import type { NavTab } from "@configs/navigation";
 import { getWebsiteConfig, getWebsiteThemeStyles } from "@configs/site.ts";
@@ -15,30 +16,62 @@ interface HeadingLike {
 
 interface Props {
   title?: string;
+  description?: string;
+  image?: string;
+  imageAlt?: string;
+  noindex?: boolean;
+  type?: "website" | "article";
   tabs?: NavTab[];
   headings?: HeadingLike[];
   rightPanel?: "api";
 }
 
-const { title = rootPackageName, tabs = [], headings = [], rightPanel } = Astro.props as Props;
+const {
+  title = rootPackageName,
+  description,
+  image,
+  imageAlt,
+  noindex = false,
+  type = "website",
+  tabs = [],
+  headings = [],
+  rightPanel
+} = Astro.props as Props;
 const hasPageOutline = headings.some((heading) => heading.depth > 1);
 const hasApiPanel = rightPanel === "api";
-const { theme } = getWebsiteConfig();
+const { theme, seo } = getWebsiteConfig();
 const themeSchemeNames = Object.keys(theme.schemes);
 const supportsAutoTheme = Boolean(theme.schemes.dark && theme.schemes.light);
 const themeOptions = supportsAutoTheme
   ? ["auto", ...themeSchemeNames.filter((name) => name !== "auto")]
   : themeSchemeNames;
 const themeStyles = getWebsiteThemeStyles(theme);
+const isAutoTheme = theme.default === "auto";
+const lightThemeLogo = theme.schemes.light?.logo;
+const darkThemeLogo = theme.schemes.dark?.logo;
+const activeThemeLogo = isAutoTheme
+  ? lightThemeLogo ?? darkThemeLogo
+  : theme.schemes[theme.default]?.logo;
+
+function resolveLogoPath(value: string): string {
+  return /^[a-z][a-z\d+.-]*:|^\/\//i.test(value) ? value : withBase(value);
+}
 ---
 
 <!doctype html>
-<html lang="en" data-theme={theme.default}>
+<html lang={seo.locale} data-theme={theme.default}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
-    <title>{title}</title>
+    <Seo
+      title={title}
+      description={description}
+      image={image}
+      imageAlt={imageAlt}
+      noindex={noindex}
+      type={type}
+    />
     <style is:global set:html={themeStyles}></style>
     <style is:global>
       .markdown-alert {
@@ -147,6 +180,9 @@ const themeStyles = getWebsiteThemeStyles(theme);
       }
 
       .site-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
         color: var(--text);
         font-size: 1rem;
         font-weight: 700;
@@ -155,6 +191,17 @@ const themeStyles = getWebsiteThemeStyles(theme);
 
       .site-brand:hover {
         color: var(--accent);
+      }
+
+      .site-brand-logo {
+        display: block;
+        width: auto;
+        max-width: 10rem;
+        height: 2rem;
+      }
+
+      .site-brand-logo-picture {
+        display: inline-flex;
       }
 
       .settings {
@@ -848,7 +895,23 @@ const themeStyles = getWebsiteThemeStyles(theme);
             <span aria-hidden="true"></span>
             <span aria-hidden="true"></span>
           </button>
-          <a class="site-brand" href={withBase("/")}>{rootPackageName}</a>
+          <a class="site-brand" href={withBase("/")}>
+            {activeThemeLogo ? (
+              <picture class="site-brand-logo-picture">
+                {isAutoTheme && darkThemeLogo ? (
+                  <source media="(prefers-color-scheme: dark)" srcset={resolveLogoPath(darkThemeLogo.src)} />
+                ) : null}
+                {isAutoTheme && lightThemeLogo ? (
+                  <source media="(prefers-color-scheme: light)" srcset={resolveLogoPath(lightThemeLogo.src)} />
+                ) : null}
+                <img
+                  class="site-brand-logo"
+                  src={resolveLogoPath(activeThemeLogo.src)}
+                  alt={activeThemeLogo.alt}
+                />
+              </picture>
+            ) : seo.siteName}
+          </a>
           <div class="settings">
             <button
               class="settings-toggle"

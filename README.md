@@ -51,7 +51,93 @@ export default defineConfig({
 
 `sourceBranch` controls the branch used by GitHub source links. It defaults to `main`.
 
+SEO metadata is configured at the website level and can be overridden by Markdown
+frontmatter. The integration derives Astro's `site` option from the host
+package's `homepage`, enabling absolute canonical and social URLs:
+
+```js
+export default defineConfig({
+  integrations: [
+    website({
+      seo: {
+        siteName: "Wima",
+        siteDescription: "Wima documentation.",
+        locale: "en",
+        socialImage: {
+          src: "/brand/social-card.png",
+          alt: "Wima documentation"
+        },
+        manifest: "/site.webmanifest",
+        twitterHandle: "@wimaengine"
+      }
+    })
+  ]
+});
+```
+
+Logos, favicons, and Safari mask icons belong to theme schemes so light and
+dark themes can provide different assets and mask colors:
+
+```js
+website({
+  theme: {
+    default: "auto",
+    schemes: {
+      light: {
+        logo: { src: "/brand/logo-light.svg", alt: "Wima" },
+        favicon: "/brand/icon-light.svg",
+        appleTouchIcon: "/brand/apple-touch-icon-light.png",
+        maskIcon: "/brand/mask-light.svg",
+        maskIconColor: "#ffffff"
+      },
+      dark: {
+        logo: { src: "/brand/logo-dark.svg", alt: "Wima" },
+        favicon: "/brand/icon-dark.svg",
+        appleTouchIcon: "/brand/apple-touch-icon-dark.png",
+        maskIcon: "/brand/mask-dark.svg",
+        maskIconColor: "#05070a"
+      }
+    }
+  }
+})
+```
+
+Guide pages, the site introduction, and package README pages support these
+frontmatter fields:
+
+```yaml
+title: Installation
+description: Install and configure the library in a new project.
+ogImage: /images/installation.png
+noindex: false
+```
+
+API page descriptions are derived from their TypeDoc summaries. Page metadata
+takes precedence over the website defaults, while standalone example previews
+are marked `noindex`.
+
+The configured icon, logo, and social image paths resolve from the host
+project's public asset directory. A typical asset layout is:
+
+```text
+public/
+├── site.webmanifest
+└── brand/
+    ├── logo.svg
+    ├── icon-light.svg
+    ├── icon-dark.svg
+    ├── apple-touch-icon-light.png
+    ├── apple-touch-icon-dark.png
+    ├── mask-light.svg
+    ├── mask-dark.svg
+    └── social-card.png
+```
+
 Theme scheme names are arbitrary identifiers. Each scheme writes the template's global CSS variables, and missing colors use the default values. Color values must be hexadecimal strings. Set `theme.default` to choose the scheme rendered on the document root. When both `dark` and `light` schemes are present, setting the default to `auto` adds an `auto` option that follows the operating system's color preference. Without both scheme names, `auto` is ignored.
+
+The browser `theme-color` metadata is derived from each scheme's
+`colors.background`. A scheme's `maskIconColor` overrides that background when
+the mask icon needs a different color.
 
 ## Host Content
 
@@ -73,6 +159,7 @@ The host project must provide TypeScript because TypeDoc uses the host project's
 - `content/guide` for guide markdown files
 - `examples` for runnable example modules
 - `src` for the library source files that drive the API docs
+- `public` for site assets such as favicons, logos, and social cards
 - `assets` for public images and example assets
 
 All of those locations can be overridden through the integration options.

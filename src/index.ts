@@ -1,7 +1,7 @@
 import path from "node:path";
 import { satteri } from "@astrojs/markdown-satteri";
 import type { AstroIntegration } from "astro";
-import { rootPackageDevUrl, rootPackageName, projectRootDir, websiteRootDir } from "./config/project.ts";
+import { rootPackageDevUrl, rootPackageName, rootPackageJson, projectRootDir, websiteRootDir } from "./config/project.ts";
 import { clearLinks } from "./config/link-map.ts";
 import { setWebsiteConfig, type WebsiteConfigOptions } from "./config/site.ts";
 import { markdownPlugins } from "./plugins/markdown-satteri.ts";
@@ -13,7 +13,7 @@ export function website(options: WebsiteConfigOptions = {}): AstroIntegration {
   return {
     name: "wima-docs-website-template",
     hooks: {
-      "astro:config:setup": ({ injectRoute, updateConfig }) => {
+      "astro:config:setup": ({ config, injectRoute, updateConfig }) => {
         injectRoute({
           pattern: "/",
           entrypoint: "wima-docs-website-template/routes/index.astro",
@@ -30,6 +30,7 @@ export function website(options: WebsiteConfigOptions = {}): AstroIntegration {
         });
 
         updateConfig({
+          site: config.site ?? rootPackageJson.homepage,
           vite: {
             resolve: {
               alias: {

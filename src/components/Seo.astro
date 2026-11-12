@@ -1,0 +1,155 @@
+---
+import { getWebsiteConfig } from "../config/site.ts";
+import { withBase } from "../utils/url.ts";
+
+interface Props {
+  title: string;
+  description?: string;
+  image?: string;
+  imageAlt?: string;
+  type?: "website" | "article";
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description,
+  image,
+  imageAlt,
+  type = "website",
+  noindex = false
+} = Astro.props as Props;
+const { seo, theme } = getWebsiteConfig();
+
+function toPlainText(value: string | undefined): string {
+  return (value ?? "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[`*_>#]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160)
+    .trim();
+}
+
+function resolveAbsoluteUrl(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (/^\/\//.test(normalized)) {
+    return `https:${normalized}`;
+  }
+
+  if (/^[a-z][a-z\d+.-]*:/i.test(normalized)) {
+    return normalized;
+  }
+
+  if (!Astro.site) {
+    return undefined;
+  }
+
+  return new URL(withBase(normalized), Astro.site).href;
+}
+
+function resolveAssetPath(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  return /^[a-z][a-z\d+.-]*:|^\/\//i.test(normalized)
+    ? normalized
+    : withBase(normalized);
+}
+
+const resolvedTitle = title.trim() || seo.siteName;
+const resolvedDescription = toPlainText(description || seo.siteDescription);
+const canonicalUrl = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
+const socialImage = resolveAbsoluteUrl(image || seo.socialImage?.src);
+const socialImageAlt = imageAlt || seo.socialImage?.alt || resolvedTitle;
+const isAutoTheme = theme.default === "auto";
+const lightThemeFavicon = theme.schemes.light?.favicon;
+const darkThemeFavicon = theme.schemes.dark?.favicon;
+const activeThemeFavicon = theme.schemes[theme.default]?.favicon;
+const lightThemeAppleTouchIcon = theme.schemes.light?.appleTouchIcon;
+const darkThemeAppleTouchIcon = theme.schemes.dark?.appleTouchIcon;
+const activeThemeAppleTouchIcon = theme.schemes[theme.default]?.appleTouchIcon;
+const lightThemeMaskIcon = theme.schemes.light?.maskIcon;
+const darkThemeMaskIcon = theme.schemes.dark?.maskIcon;
+const activeThemeMaskIcon = theme.schemes[theme.default]?.maskIcon;
+const lightThemeMaskIconColor = theme.schemes.light?.maskIconColor;
+const darkThemeMaskIconColor = theme.schemes.dark?.maskIconColor;
+const activeThemeMaskIconColor = theme.schemes[theme.default]?.maskIconColor;
+const lightThemeColor = theme.schemes.light?.colors.background;
+const darkThemeColor = theme.schemes.dark?.colors.background;
+const activeThemeColor = theme.schemes[theme.default]?.colors.background;
+const robots = noindex ? "noindex,follow" : "index,follow";
+---
+
+{isAutoTheme && lightThemeFavicon ? (
+  <link rel="icon" media="(prefers-color-scheme: light)" href={resolveAssetPath(lightThemeFavicon)} />
+) : null}
+{isAutoTheme && darkThemeFavicon ? (
+  <link rel="icon" media="(prefers-color-scheme: dark)" href={resolveAssetPath(darkThemeFavicon)} />
+) : null}
+{!isAutoTheme && activeThemeFavicon ? <link rel="icon" href={resolveAssetPath(activeThemeFavicon)} /> : null}
+{isAutoTheme && lightThemeAppleTouchIcon ? (
+  <link rel="apple-touch-icon" media="(prefers-color-scheme: light)" href={resolveAssetPath(lightThemeAppleTouchIcon)} />
+) : null}
+{isAutoTheme && darkThemeAppleTouchIcon ? (
+  <link rel="apple-touch-icon" media="(prefers-color-scheme: dark)" href={resolveAssetPath(darkThemeAppleTouchIcon)} />
+) : null}
+{!isAutoTheme && activeThemeAppleTouchIcon ? (
+  <link rel="apple-touch-icon" href={resolveAssetPath(activeThemeAppleTouchIcon)} />
+) : null}
+{isAutoTheme && lightThemeMaskIcon ? (
+  <link
+    rel="mask-icon"
+    media="(prefers-color-scheme: light)"
+    href={resolveAssetPath(lightThemeMaskIcon)}
+    color={lightThemeMaskIconColor || lightThemeColor}
+  />
+) : null}
+{isAutoTheme && darkThemeMaskIcon ? (
+  <link
+    rel="mask-icon"
+    media="(prefers-color-scheme: dark)"
+    href={resolveAssetPath(darkThemeMaskIcon)}
+    color={darkThemeMaskIconColor || darkThemeColor}
+  />
+) : null}
+{!isAutoTheme && activeThemeMaskIcon ? (
+  <link
+    rel="mask-icon"
+    href={resolveAssetPath(activeThemeMaskIcon)}
+    color={activeThemeMaskIconColor || activeThemeColor}
+  />
+) : null}
+{seo.manifest ? <link rel="manifest" href={resolveAssetPath(seo.manifest)} /> : null}
+{isAutoTheme && lightThemeColor ? (
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content={lightThemeColor} />
+) : null}
+{isAutoTheme && darkThemeColor ? (
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content={darkThemeColor} />
+) : null}
+{!isAutoTheme && activeThemeColor ? <meta name="theme-color" content={activeThemeColor} /> : null}
+<meta name="description" content={resolvedDescription} />
+<meta name="robots" content={robots} />
+{canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+<meta property="og:type" content={type} />
+<meta property="og:title" content={resolvedTitle} />
+<meta property="og:description" content={resolvedDescription} />
+<meta property="og:site_name" content={seo.siteName} />
+<meta property="og:locale" content={seo.locale.replace("-", "_")} />
+{canonicalUrl ? <meta property="og:url" content={canonicalUrl} /> : null}
+{socialImage ? <meta property="og:image" content={socialImage} /> : null}
+{socialImage ? <meta property="og:image:alt" content={socialImageAlt} /> : null}
+<meta name="twitter:card" content={socialImage ? "summary_large_image" : "summary"} />
+<meta name="twitter:title" content={resolvedTitle} />
+<meta name="twitter:description" content={resolvedDescription} />
+{socialImage ? <meta name="twitter:image" content={socialImage} /> : null}
+{seo.twitterHandle ? <meta name="twitter:site" content={seo.twitterHandle} /> : null}
+<title>{resolvedTitle}</title>

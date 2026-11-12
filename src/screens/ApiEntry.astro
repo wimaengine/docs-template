@@ -40,7 +40,9 @@ const title = `${getReflectionKindLabel(reflection.kind)} ${reflection.name}`;
 
 <DocLayout
   title={`${title} | ${rootPackageName}`}
+  description={description}
   tabs={sidebarTabs}
+  type="article"
   rightPanel={children.length > 0 ? "api" : undefined}
 >
   <ApiSurface>

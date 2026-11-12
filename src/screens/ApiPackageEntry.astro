@@ -16,8 +16,12 @@ const { Content, headings } = await render(entry);
 
 <DocLayout
   title={`${entry.data.title} API | ${rootPackageName}`}
+  description={entry.data.description}
+  image={entry.data.ogImage}
+  noindex={entry.data.noindex}
   tabs={sidebarTabs}
   headings={headings}
+  type="article"
 >
   <ApiSurface>
     <div class="api-package-page">

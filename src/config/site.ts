@@ -1,9 +1,10 @@
 import path from "node:path";
-import { projectRootDir } from "./project.ts";
+import { projectRootDir, rootPackageName } from "./project.ts";
 import type { JSONOutput } from "typedoc";
 import { getReflectionCategory, getReflectionKindSlug } from "../utils/typedoc.ts";
 
 export interface WebsiteConfigOptions {
+  seo?: WebsiteSeoOptions;
   guideRoute?: string;
   examplesRoute?: string;
   apiRoute?: string;
@@ -14,6 +15,25 @@ export interface WebsiteConfigOptions {
   examplesContentDir?: string;
   apiSourceDir?: string;
   introContentPath?: string;
+}
+
+export interface WebsiteSeoImageOptions {
+  src: string;
+  alt?: string;
+}
+
+export interface WebsiteThemeLogoOptions {
+  src: string;
+  alt: string;
+}
+
+export interface WebsiteSeoOptions {
+  siteName?: string;
+  siteDescription?: string;
+  locale?: string;
+  twitterHandle?: string;
+  socialImage?: WebsiteSeoImageOptions;
+  manifest?: string;
 }
 
 export interface WebsiteThemeColors {
@@ -32,6 +52,11 @@ export interface WebsiteThemeColors {
 }
 
 export interface WebsiteThemeSchemeOptions {
+  logo?: WebsiteThemeLogoOptions;
+  favicon?: string;
+  appleTouchIcon?: string;
+  maskIcon?: string;
+  maskIconColor?: string;
   colors?: Partial<WebsiteThemeColors>;
 }
 
@@ -41,6 +66,11 @@ export interface WebsiteThemeOptions {
 }
 
 export interface WebsiteThemeScheme {
+  logo?: WebsiteThemeLogoOptions;
+  favicon?: string;
+  appleTouchIcon?: string;
+  maskIcon?: string;
+  maskIconColor?: string;
   colors: WebsiteThemeColors;
 }
 
@@ -75,6 +105,14 @@ export type ApiEntryRouteResolver = (
 ) => string;
 
 export interface WebsiteConfig {
+  seo: {
+    siteName: string;
+    siteDescription: string;
+    locale: string;
+    twitterHandle?: string;
+    socialImage?: WebsiteSeoImageOptions;
+    manifest?: string;
+  };
   guideRoute: string;
   examplesRoute: string;
   apiRoute: string;
@@ -162,6 +200,11 @@ function defaultApiEntryRoute(_path: string, reflection: JSONOutput.DeclarationR
 }
 
 const defaultWebsiteConfig: Readonly<WebsiteConfig> = Object.freeze({
+  seo: {
+    siteName: rootPackageName,
+    siteDescription: `${rootPackageName} documentation`,
+    locale: "en"
+  },
   guideRoute: "/guide",
   examplesRoute: "/examples",
   apiRoute: "/api",
@@ -224,6 +267,27 @@ function normalizeSourceBranch(value: string | undefined, fallback: string): str
   return raw.replace(/^\/+|\/+$/g, "") || fallback;
 }
 
+function normalizeOptionalText(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
+}
+
+function resolveSeo(options: WebsiteSeoOptions = {}): WebsiteConfig["seo"] {
+  return {
+    siteName: options.siteName?.trim() || defaultWebsiteConfig.seo.siteName,
+    siteDescription: options.siteDescription?.trim() || defaultWebsiteConfig.seo.siteDescription,
+    locale: options.locale?.trim() || defaultWebsiteConfig.seo.locale,
+    twitterHandle: normalizeOptionalText(options.twitterHandle),
+    socialImage: options.socialImage
+      ? {
+          src: options.socialImage.src.trim(),
+          alt: normalizeOptionalText(options.socialImage.alt)
+        }
+      : undefined,
+    manifest: normalizeOptionalText(options.manifest)
+  };
+}
+
 function resolveApiEntryRoute(
   options: WebsiteConfigOptions,
   registeredApiEntryRoute?: ApiEntryRouteResolver
@@ -243,6 +307,16 @@ function resolveTheme(options: WebsiteThemeOptions = {}): WebsiteTheme {
     const scheme = schemeOptions[name] ?? {};
 
     schemes[name] = Object.freeze({
+      logo: scheme.logo
+        ? {
+            src: scheme.logo.src.trim(),
+            alt: scheme.logo.alt.trim()
+          }
+        : undefined,
+      favicon: normalizeOptionalText(scheme.favicon),
+      appleTouchIcon: normalizeOptionalText(scheme.appleTouchIcon),
+      maskIcon: normalizeOptionalText(scheme.maskIcon),
+      maskIconColor: normalizeOptionalText(scheme.maskIconColor),
       colors: Object.freeze({
         ...baseScheme.colors,
         ...(scheme.colors ?? {})
@@ -269,6 +343,7 @@ function resolveWebsiteConfig(
   { apiEntryRoute: registeredApiEntryRoute }: { apiEntryRoute?: ApiEntryRouteResolver } = {}
 ): WebsiteConfig {
   const config = {
+    seo: resolveSeo(options.seo),
     guideRoute: normalizeRoutePath(options.guideRoute, defaultWebsiteConfig.guideRoute),
     examplesRoute: normalizeRoutePath(options.examplesRoute, defaultWebsiteConfig.examplesRoute),
     apiRoute: normalizeRoutePath(options.apiRoute, defaultWebsiteConfig.apiRoute),

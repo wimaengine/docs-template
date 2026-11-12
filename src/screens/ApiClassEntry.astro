@@ -36,7 +36,9 @@ const tags = getReflectionTags(reflection, signature);
 
 <DocLayout
   title={`${getReflectionKindName(reflection.kind)} ${reflection.name} | ${rootPackageName}`}
+  description={description}
   tabs={sidebarTabs}
+  type="article"
   rightPanel={members.length > 0 ? "api" : undefined}
 >
   <ApiSurface>
