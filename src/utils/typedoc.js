@@ -85,6 +85,17 @@ function getReflectionMemberBadge(kind) {
   return null;
 }
 
+function getReflectionMemberAnchor(reflection) {
+  const name = String(reflection?.name ?? "").trim();
+  const anchor = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return anchor || "member";
+}
+
 function getReflectionKindSlug(kind) {
   return getReflectionKindName(kind).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
 }
@@ -485,6 +496,7 @@ export {
   getReflectionDescriptionMarkdown,
   getReflectionExamples,
   getReflectionMemberBadge,
+  getReflectionMemberAnchor,
   getReflectionKindLabel,
   getReflectionKindName,
   getReflectionKindSlug,

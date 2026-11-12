@@ -9,6 +9,7 @@ import ApiMemberIndex from "../components/ApiMemberIndex.astro";
 import ApiSurface from "../components/ApiSurface.astro";
 import {
   getReflectionDescriptionMarkdown,
+  getReflectionMemberAnchor,
   getReflectionSignatures,
   getReflectionTags,
   getVisibleReflectionChildren,
@@ -69,7 +70,7 @@ const members = getVisibleReflectionChildren(reflection)
           <hr class="api-group-rule" />
           <div class="member-list">
             {members.map((member) => (
-              <article class="member-section" id={`member-${member.id}`}>
+              <article class="member-section" id={getReflectionMemberAnchor(member)}>
                 <header class="member-header">
                   <h3>{member.name}</h3>
                 </header>

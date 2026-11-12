@@ -5,6 +5,7 @@ import {
   getGuideEntryRoute
 } from "./site.js";
 import { addLink, addLinks, getLink } from "./link-map.js";
+import { getReflectionMemberAnchor } from "../utils/typedoc.js";
 
 export { addLink, addLinks, getLink };
 
@@ -94,7 +95,7 @@ function addReflectionLinks(links, reflection, route, parentNames = [], seenIds 
   const childParentNames = parentNames.length > 0 ? parentNames : name ? [name] : [];
 
   for (const child of getReflectionChildren(reflection)) {
-    const childAnchor = anchor ?? (Number.isFinite(child.id) ? `member-${child.id}` : undefined);
+    const childAnchor = anchor ?? getReflectionMemberAnchor(child);
     const childSeparator = child.flags?.isStatic ? "." : "#";
     addReflectionLinks(links, child, route, childParentNames, seenIds, childAnchor, childSeparator);
   }

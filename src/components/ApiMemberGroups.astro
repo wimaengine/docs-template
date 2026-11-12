@@ -2,6 +2,7 @@
 import ApiMemberTitle from "./ApiMemberTitle.astro";
 import ApiReflection from "./ApiReflection.astro";
 import {
+  getReflectionMemberAnchor,
   getReflectionKindName,
   ReflectionKind
 } from "../utils/typedoc.js";
@@ -93,7 +94,7 @@ function shouldShowMemberKind(member: TypeDocReflection): boolean {
       <hr class="api-group-rule" />
       <div class="member-list">
         {bucket.items.map((member) => (
-          <article class="member-section" id={`member-${member.id}`}>
+          <article class="member-section" id={getReflectionMemberAnchor(member)}>
             <header class="member-header">
               <h3>
                 <ApiMemberTitle

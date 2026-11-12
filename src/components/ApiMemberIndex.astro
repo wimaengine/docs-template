@@ -1,6 +1,7 @@
 ---
 import {
   getReflectionMemberBadge,
+  getReflectionMemberAnchor,
   getReflectionKindName,
   ReflectionKind
 } from "../utils/typedoc.js";
@@ -70,7 +71,7 @@ function getIndexName(member: TypeDocReflection): string {
 
           return (
             <li>
-              <a class="api-type-index-link" href={`#member-${member.id}`}>
+              <a class="api-type-index-link" href={`#${getReflectionMemberAnchor(member)}`}>
                 <span
                   class={`api-type-index-badge is-${badge.letter.toLowerCase()}`}
                   title={badge.name}
