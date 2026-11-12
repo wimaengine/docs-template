@@ -114,8 +114,14 @@ function getReflectionMemberAnchor(reflection: JSONOutput.SomeReflection | undef
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  const kind = !reflection
+    ? "member"
+    : reflection.kind === ReflectionKind.EnumMember
+      ? "variant"
+      : getReflectionKindSlug(reflection.kind);
+  const scope = reflection?.flags?.isStatic ? "static." : "";
 
-  return anchor || "member";
+  return `${scope}${kind}.${anchor || "member"}`;
 }
 
 function getReflectionKindSlug(kind: number): string {
