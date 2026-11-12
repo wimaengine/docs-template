@@ -302,10 +302,9 @@ function createGuideNavigation(guideEntries, guideRootPath, readingOrderIndex) {
 const guideRootPath = getGuideRoutePath();
 const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
-const [introEntries, guideEntries, examplesEntries, apiEntries, apiPackageEntries] = await Promise.all([
+const [introEntries, guideEntries, apiEntries, apiPackageEntries] = await Promise.all([
   getCollection("intro"),
   getCollection("guide"),
-  getCollection("examples"),
   getCollection("api"),
   getCollection("apiPackages")
 ]);

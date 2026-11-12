@@ -1,0 +1,105 @@
+---
+import { getExamplesRoutePath } from "../config/site.js";
+import { withBase } from "../utils/url.js";
+
+interface ExampleTreeNode {
+  id: string;
+  label: string;
+  examples: Array<{
+    slug: string;
+    title: string;
+  }>;
+  children: ExampleTreeNode[];
+}
+
+interface Props {
+  nodes: ExampleTreeNode[];
+}
+
+const { nodes } = Astro.props as Props;
+
+function formatGroupLabel(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+---
+
+<ul class="example-tree">
+  {nodes.map((node) => (
+    <li class="example-tree-node">
+      <h2 id={node.id} class="example-group-title">{formatGroupLabel(node.label)}</h2>
+      {node.examples.length > 0 ? (
+        <div class="examples-grid">
+          {node.examples.map((example) => (
+            <a class="example-card" href={withBase(getExamplesRoutePath(example.slug))}>
+              <img src={withBase("/images/uv.jpg")} alt="" loading="lazy" />
+              <span>{example.title}</span>
+            </a>
+          ))}
+        </div>
+      ) : null}
+      {node.children.length > 0 ? <Astro.self nodes={node.children} /> : null}
+    </li>
+  ))}
+</ul>
+
+<style>
+  .example-tree {
+    display: grid;
+    gap: 2rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .example-tree .example-tree {
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .example-tree-node {
+    min-width: 0;
+  }
+
+  .example-group-title {
+    margin: 0 0 0.75rem;
+  }
+
+  .examples-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .example-card {
+    position: relative;
+    display: block;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface-2);
+    text-decoration: none;
+  }
+
+  .example-card img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .example-card span {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 0.55rem 0.75rem;
+    color: #ffffff;
+    font-weight: 700;
+    text-align: center;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.15));
+  }
+</style>

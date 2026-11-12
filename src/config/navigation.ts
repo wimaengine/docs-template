@@ -30,18 +30,6 @@ interface IntroCollectionEntry {
   };
 }
 
-interface ExampleCollectionEntry {
-  id: string;
-  filePath?: string;
-  data: {
-    title: string;
-    description: string;
-    category: string;
-    filePath: string;
-    source: string;
-  };
-}
-
 interface ReadingOrderEntry {
   href: string;
   order: number;
@@ -407,16 +395,14 @@ function createGuideNavigation(
 const guideRootPath = getGuideRoutePath();
 const apiRootPath = getApiRoutePath();
 const examplesRootPath = getExamplesRoutePath();
-const [introEntries, guideEntries, examplesEntries, apiEntries, apiPackageEntries] = await Promise.all([
+const [introEntries, guideEntries, apiEntries, apiPackageEntries] = await Promise.all([
   getCollection("intro"),
   getCollection("guide"),
-  getCollection("examples"),
   getCollection("api"),
   getCollection("apiPackages")
 ]) as [
   IntroCollectionEntry[],
   GuideCollectionEntry[],
-  ExampleCollectionEntry[],
   ApiCollectionEntry[],
   ApiPackageCollectionEntry[]
 ];

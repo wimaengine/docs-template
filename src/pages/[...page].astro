@@ -35,11 +35,19 @@ interface ExampleCollectionEntry {
   id: string;
   data: {
     title: string;
-    description: string;
-    category: string;
     filePath: string;
     source: string;
   };
+}
+
+interface ExampleTreeNode {
+  id: string;
+  label: string;
+  examples: Array<{
+    slug: string;
+    title: string;
+  }>;
+  children: ExampleTreeNode[];
 }
 
 interface TypeDocReflection {
@@ -78,8 +86,61 @@ interface StaticProps {
   entry?: GuideCollectionEntry | ExampleCollectionEntry | ApiCollectionEntry | ApiPackageCollectionEntry;
 }
 
-function splitCamelCase(value: string): string {
-  return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+function slugifyExampleSegment(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
+function createExampleTree(examples: ExampleCollectionEntry[]): ExampleTreeNode[] {
+  const root: ExampleTreeNode = {
+    id: "",
+    label: "",
+    examples: [],
+    children: []
+  };
+
+  for (const entry of examples) {
+    const segments = entry.id.split("/").filter(Boolean);
+    segments.pop();
+    let node = root;
+
+    for (const segment of segments) {
+      let child = node.children.find((candidate) => candidate.label === segment);
+
+      if (!child) {
+        const segmentId = slugifyExampleSegment(segment);
+        child = {
+          id: node.id ? `${node.id}-${segmentId}` : segmentId,
+          label: segment,
+          examples: [],
+          children: []
+        };
+        node.children.push(child);
+      }
+
+      node = child;
+    }
+
+    node.examples.push({
+      slug: entry.id,
+      title: entry.data.title
+    });
+  }
+
+  function sortTree(nodes: ExampleTreeNode[]) {
+    nodes.sort((a, b) => a.label.localeCompare(b.label));
+
+    for (const node of nodes) {
+      node.examples.sort((a, b) => a.title.localeCompare(b.title));
+      sortTree(node.children);
+    }
+  }
+
+  sortTree(root.children);
+  return root.children;
 }
 
 export async function getStaticPaths() {
@@ -153,32 +214,13 @@ const apiClassEntry = kind === "api-class-entry" ? (props.entry as ApiCollection
 const apiEnumEntry = kind === "api-enum-entry" ? (props.entry as ApiCollectionEntry) : null;
 
 const examples = (await getCollection("examples")) as ExampleCollectionEntry[];
-const categories = Object.entries(
-  examples
-    .map((entry) => ({
-      slug: entry.id,
-      title: splitCamelCase(entry.data.title),
-      directory: entry.id.split("/").slice(0, -1).join("/"),
-      description: entry.data.description
-    }))
-    .sort((a, b) => {
-      const dirCompare = a.directory.localeCompare(b.directory);
-      if (dirCompare !== 0) return dirCompare;
-      return a.title.localeCompare(b.title);
-    })
-    .reduce<Record<string, Array<{ slug: string; title: string; directory: string; description: string }>>>((acc, example) => {
-      const key = example.directory || "uncategorized";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(example);
-      return acc;
-    }, {})
-);
+const exampleTree = createExampleTree(examples);
 
 ---
 
 {guideEntry && kind === "guide-index" ? <GuideIndex entry={guideEntry} /> : null}
 {guideEntry && kind === "guide-entry" ? <GuideEntry entry={guideEntry} /> : null}
-{kind === "examples-index" ? <ExamplesIndex categories={categories} /> : null}
+{kind === "examples-index" ? <ExamplesIndex nodes={exampleTree} /> : null}
 {exampleEntry && kind === "example-entry" ? <ExampleEntry entry={exampleEntry} sampleUrl={withBase(getExamplesRoutePath(exampleEntry.id, "example.html"))} /> : null}
 {kind === "api-index" ? <ApiIndex /> : null}
 {apiPackageEntry && kind === "api-package-entry" ? <ApiPackageEntry entry={apiPackageEntry} /> : null}

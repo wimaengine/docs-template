@@ -110,7 +110,6 @@ async function syncExampleEntries({ examplesRoot, parseData, store, meta, genera
       const normalizedPath = relativePath.split(path.sep).join("/");
       const id = normalizedPath.replace(/\.js$/, "");
       const segments = id.split("/");
-      const category = segments[0] || "uncategorized";
       const fileName = segments.at(-1) || "example";
       const absoluteFilePath = path.join(examplesRoot, relativePath);
       const storedFilePath = path.relative(projectRootDir, absoluteFilePath).split(path.sep).join("/");
@@ -131,8 +130,6 @@ async function syncExampleEntries({ examplesRoot, parseData, store, meta, genera
         filePath: storedFilePath,
         data: {
           title: toTitle(fileName),
-          description: `${toTitle(category)} example`,
-          category,
           filePath: toDisplayPath(absoluteFilePath),
           source
         }
@@ -520,8 +517,6 @@ const examples = defineCollection({
   },
   schema: z.object({
     title: z.string(),
-    description: z.string(),
-    category: z.string(),
     filePath: z.string(),
     source: z.string()
   })
