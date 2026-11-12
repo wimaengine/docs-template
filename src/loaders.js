@@ -5,6 +5,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { projectRootDir } from "./config/project.js";
 import {
+  addApiLinks,
   addApiPackageLinks,
   addExampleLinks,
   addGuideLinks,
@@ -533,6 +534,7 @@ const api = defineCollection({
       const entries = await loadApiEntries();
 
       store.clear();
+      addApiLinks(entries);
 
       for (const entry of entries) {
         store.set({

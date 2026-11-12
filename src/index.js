@@ -4,10 +4,9 @@ import { rootPackageDevUrl, rootPackageName, projectRootDir, websiteRootDir } fr
 import { clearLinks } from "./config/link-map.js";
 import { setWebsiteConfig } from "./config/site.js";
 import { markdownPlugins } from "./plugins/markdown-satteri.js";
-import { mdnTypeLinks } from "./utils/mdn.js";
 
 export function website(options = {}) {
-  clearLinks(mdnTypeLinks);
+  clearLinks();
   setWebsiteConfig(options);
 
   return {

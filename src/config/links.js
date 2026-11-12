@@ -1,4 +1,5 @@
 import {
+  getApiEntryRoute,
   getApiPackageRoute,
   getExamplesRoutePath,
   getGuideEntryRoute
@@ -49,6 +50,61 @@ export function addApiPackageLinks(entries) {
 
     const route = getApiPackageRoute(entry);
     links.push([entry.filePath, route]);
+  }
+
+  addLinks(links);
+}
+
+function getReflectionChildren(reflection) {
+  return reflection?.children ?? [];
+}
+
+function getReflectionName(reflection) {
+  const name = reflection?.name;
+  return typeof name === "string" && name.trim() !== "" ? name.trim() : undefined;
+}
+
+function addReflectionLinks(links, reflection, route, parentNames = [], seenIds = new Set(), anchor, separator) {
+  if (!reflection) {
+    return;
+  }
+
+  const hasId = Number.isFinite(reflection.id);
+  if (hasId) {
+    if (seenIds.has(reflection.id)) {
+      return;
+    }
+
+    seenIds.add(reflection.id);
+  }
+
+  const name = getReflectionName(reflection);
+  const targetRoute = anchor ? `${route}#${anchor}` : route;
+
+  if (name && parentNames.length === 0) {
+    links.push([name, targetRoute]);
+  }
+
+  if (name) {
+    for (const parentName of parentNames) {
+      links.push([`${parentName}${separator}${name}`, targetRoute]);
+    }
+  }
+
+  const childParentNames = parentNames.length > 0 ? parentNames : name ? [name] : [];
+
+  for (const child of getReflectionChildren(reflection)) {
+    const childAnchor = anchor ?? (Number.isFinite(child.id) ? `member-${child.id}` : undefined);
+    const childSeparator = child.flags?.isStatic ? "." : "#";
+    addReflectionLinks(links, child, route, childParentNames, seenIds, childAnchor, childSeparator);
+  }
+}
+
+export function addApiLinks(entries) {
+  const links = [];
+
+  for (const entry of entries) {
+    addReflectionLinks(links, entry.data, getApiEntryRoute(entry));
   }
 
   addLinks(links);
