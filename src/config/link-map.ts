@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { projectRootDir } from "./project.ts";
+import { mdnTypeLinks } from "../utils/mdn.ts";
 
 type LinkMap = Record<string, string | null>;
 export type LinkEntry = [alias: string, route: string];
@@ -109,5 +110,5 @@ function getRegisteredLink(alias: string, links: LinkMap): string | undefined {
 export function getLink(alias: string): string | undefined {
   const links = readLinks();
   const route = getRegisteredLink(alias, links);
-  return route;
+  return route ?? mdnTypeLinks[alias];
 }

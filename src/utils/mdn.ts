@@ -195,9 +195,9 @@ const exactMdnTypeLinks = {
   ...globalValues
 };
 
-export const mdnTypeLinks = Object.freeze({
+export const mdnTypeLinks = {
   ...exactMdnTypeLinks,
   ...Object.fromEntries(
     Object.entries(exactMdnTypeLinks).map(([name, route]) => [`globalThis.${name}`, route])
   )
-});
+} as const
